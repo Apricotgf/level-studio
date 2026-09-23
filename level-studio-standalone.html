@@ -1,0 +1,1778 @@
+<!doctype html><html lang="zh-CN"><head><meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1"><title>关卡设计工作台</title><meta name="description" content="在单位网格上设计多层关卡，支持自由拖动、无限楼层、墙体与门洞编辑，并在三维视图中预览空间关系。"><link rel="icon" href="data:image/svg+xml,%3Csvg%20xmlns%3D%22http%3A%2F%2Fwww.w3.org%2F2000%2Fsvg%22%20viewBox%3D%220%200%2032%2032%22%3E%3Crect%20width%3D%2232%22%20height%3D%2232%22%20rx%3D%228%22%20fill%3D%22%230a9f80%22%2F%3E%3Cg%20fill%3D%22none%22%20stroke%3D%22%23fff%22%20stroke-width%3D%222.2%22%20stroke-linejoin%3D%22round%22%3E%3Cpath%20d%3D%22M6%2020h20M6%2020v-6h12M18%2014V6%22%2F%3E%3C%2Fg%3E%3C%2Fsvg%3E"><style>
+:root{font-family:Inter,"Segoe UI","Microsoft YaHei",sans-serif;color:#233d38;background:#fafbf9;font-size:14px;--green:#0a9f80;--green-dark:#087c65;--line:#e4e9e5;--muted:#8b9a92}
+*{box-sizing:border-box}
+body{margin:0;overflow:hidden}
+button,input,select{font:inherit}
+button{cursor:pointer;background:transparent;border:0;color:inherit;border-radius:7px;transition:background .15s}
+button:hover{background:#e9f2ee}
+button:focus-visible,input:focus-visible,select:focus-visible{outline:2px solid var(--green);outline-offset:2px}
+button:disabled{opacity:.35;cursor:default}
+input[type=number],input[type=text],input:not([type]),select{border:1px solid #dce6df;border-radius:6px;background:#fff;color:#2c4a41;padding:6px 8px;width:100%}
+input[type=color]{width:44px;height:30px;padding:2px;border:1px solid #dce6df;border-radius:6px;background:#fff}
+kbd{border:1px solid #d6e0da;border-bottom-width:2px;border-radius:5px;padding:1px 6px;background:#fff;font-size:12px;font-family:inherit}
+
+/* header */
+header{height:76px;display:flex;align-items:center;padding:0 24px;border-bottom:1px solid var(--line);background:#fff;gap:32px}
+.brand{display:flex;align-items:center;gap:12px}
+.brandmark{display:grid;place-items:center;background:var(--green);color:#fff;width:36px;height:36px;border-radius:10px;font-size:34px}
+.brand b{font-size:21px;letter-spacing:3px}
+.brand-en{font-size:11px;letter-spacing:1.5px;color:#91a19b;max-width:58px;line-height:1.5}
+.title{display:flex;flex-direction:column;gap:4px}
+.title input{border:0;padding:0;font-size:16px;font-weight:600;width:210px;color:#233d38;background:transparent}
+.title span{font-size:12px;color:#99a69f}
+.header-actions{margin-left:auto;display:flex;gap:8px;align-items:center}
+.header-actions button{padding:10px 12px}
+.header-actions i{height:22px;border-left:1px solid var(--line);margin:0 8px}
+#export{background:#edf7f3;color:var(--green-dark)}
+
+/* layout */
+main{display:flex;height:calc(100dvh - 76px)}
+.tools{width:68px;flex-shrink:0;background:#fff;border-right:1px solid var(--line);display:flex;align-items:center;flex-direction:column;padding:22px 10px;gap:10px}
+.tools button{width:44px;height:44px;font-size:28px;color:#667a71;display:grid;place-items:center}
+.tools button svg{display:block}
+.tools button.active{color:#fff;background:var(--green);box-shadow:0 4px 9px #099d8022}
+.tool-line{width:24px;border-top:1px solid var(--line);margin:6px 0}
+.tools-foot{margin-top:auto;font-size:12px;color:#8ca297}
+
+.workspace{position:relative;flex:1;min-width:0;background:#f6f8f5;overflow:hidden}
+#canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+.canvas-top{position:absolute;top:10px;left:12px;right:12px;z-index:2;display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+.canvas-top>*{pointer-events:auto}
+.segmented{display:flex;background:#263e36;border-radius:9px;padding:3px;gap:2px;flex-shrink:0}
+.segmented button{color:#cfe0d6;padding:8px 12px;border-radius:7px;font-size:13px;white-space:nowrap}
+.segmented button:hover{background:#334f45}
+.segmented button.active{background:#fff;color:#22463a;font-weight:600}
+.segmented.compact button,.segmented.small button{padding:7px 10px;font-size:12px}
+.segmented.small{background:#eef4f0}
+.segmented.small button{color:#5c7a6c}
+.segmented.small button:hover{background:#e0ece5}
+.segmented.small button.active{background:var(--green);color:#fff}
+.white-button{background:#fff;border:1px solid var(--line);padding:9px 12px;font-size:13px;box-shadow:0 2px 6px #23413a10;flex-shrink:0}
+.floor-tabs{display:flex;align-items:center;gap:6px;background:#263e36;border-radius:9px;padding:3px 6px}
+.floor-tabs select{border:0;background:#334f45;color:#fff;border-radius:6px;padding:7px 6px;min-width:64px;font:inherit}
+.floor-tabs select:focus-visible{outline:2px solid #7fd7bd}
+.floor-tabs button{color:#cfe0d6;padding:7px 9px;border-radius:6px;font-size:13px}
+.floor-tabs button:hover{background:#334f45}
+.floor-tabs span{white-space:nowrap;color:#819487;font-size:12px;padding:0 4px}
+
+.empty{position:absolute;top:52%;left:50%;transform:translate(-50%,-50%);text-align:center;color:#7d8f85;pointer-events:none}
+.empty-icon{display:grid;place-items:center;width:52px;height:52px;margin:0 auto;border-radius:14px;background:#eef3ef;color:#a9bcb1;font-size:28px}
+.empty h1{margin:14px 0 6px;font-size:19px;color:#3c5a4e;font-weight:600}
+.empty p{margin:0 0 10px;font-size:13px}
+.empty div{display:flex;gap:8px;justify-content:center;color:#8b9a92;font-size:12px}
+.canvas-bottom{position:absolute;left:12px;right:12px;bottom:46px;display:flex;align-items:center;gap:12px;pointer-events:none;z-index:2}
+.canvas-bottom>*{pointer-events:auto}
+.hint{font-size:12px;color:#8b9a92;background:#f6f8f5cc;padding:4px 8px;border-radius:6px}
+.zoom{margin-left:auto;display:flex;align-items:center;gap:2px;background:#fff;border:1px solid var(--line);border-radius:8px;padding:2px}
+.zoom button{width:30px;height:28px;font-size:15px;color:#5c7a6c}
+.zoom span{min-width:52px;text-align:center;font-size:12px;color:#5c7a6c}
+footer{position:absolute;bottom:0;left:0;right:0;height:34px;display:flex;align-items:center;gap:18px;padding:0 14px;border-top:1px solid var(--line);background:#fff;font-size:12px;color:#7e8f86;z-index:2}
+footer span{display:inline-flex;align-items:center;gap:6px}
+.status-dot{width:7px;height:7px;border-radius:50%;background:var(--green)}
+#stats{margin-left:auto}
+
+/* aside */
+aside{width:308px;flex-shrink:0;background:#fff;border-left:1px solid var(--line);display:flex;flex-direction:column;overflow:hidden}
+.panel-tabs{display:flex;border-bottom:1px solid var(--line);flex-shrink:0}
+.panel-tabs button{flex:1;padding:13px 0;font-size:13px;color:#6d8479;border-radius:0}
+.panel-tabs button.active{color:var(--green-dark);font-weight:600;box-shadow:inset 0 -2px 0 var(--green)}
+#layersPanel,#propertiesPanel{flex:1;overflow-y:auto;padding:16px}
+.panel-section{margin-top:18px;padding-top:16px;border-top:1px solid var(--line)}
+.section-title{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.section-title h2{font-size:14px;margin:0;font-weight:600}
+.section-title.small{margin:14px 0 6px}
+.section-title.small h3{font-size:13px;margin:0;font-weight:600}
+.section-title button{margin-left:auto;font-size:12px;padding:5px 8px;color:var(--green-dark);background:#edf7f3;white-space:nowrap}
+.tag{font-size:11px;color:#7e8f86;background:#f1f5f2;border-radius:5px;padding:2px 7px}
+.muted{color:var(--muted)}
+.intro{font-size:12px;line-height:1.7;margin:6px 0}
+.field{display:block;font-size:12px;color:#6d8479;margin:10px 0}
+.field input,.field select{margin-top:5px}
+.two-fields{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.field-row{display:flex;align-items:center;gap:10px;margin:12px 0}
+.row-label{font-size:12px;color:#6d8479;flex-shrink:0}
+.check{display:flex;align-items:center;gap:8px;font-size:12px;color:#4d6a5e;margin:9px 0;cursor:pointer}
+.check input{width:auto;margin:0}
+.color-row{display:flex;align-items:center;gap:10px;margin-top:5px}
+.color-row span{font-size:12px;color:#7e8f86}
+#swatches{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+#swatches button{width:26px;height:26px;border-radius:6px;border:1px solid #00000010}
+.rotation-actions{display:flex;gap:10px;margin-top:8px}
+.rotation-actions button{flex:1;border:1px solid #dce6df;background:#f4faf6;padding:9px;color:#19846a;font-size:12px}
+button.wide{width:100%;border:1px solid #dce6df;background:#f4faf6;padding:10px;margin-top:14px;font-size:13px;color:#3c5a4e}
+button.wide.danger{background:#fdf1ef;border-color:#f2d9d3;color:#b0493a}
+
+/* floors + layers */
+.floor-group{margin-top:12px}
+.floor-heading{display:flex;align-items:center;gap:5px;padding:8px 4px;flex-wrap:wrap;border-radius:7px}
+.floor-heading.current{background:#f0f8f2}
+.floor-heading>button:first-child{padding:4px 5px;font-weight:600;color:#4a6b5a;font-size:13px}
+.floor-heading>span{font-size:11px;color:#93a49a;margin-left:auto}
+.floor-heading .floor-height{order:1;flex:0 0 100%;display:flex;align-items:center;gap:9px;padding:3px 5px;color:#71897a;font-size:12px}
+.floor-height input{width:104px}
+.floor-heading .floor-fold{width:26px;flex:0 0 26px;height:26px;font-size:16px;padding:0;color:#7e8f86}
+.floor-hidden .floor-heading>button:first-child,.floor-hidden .floor-heading>span{color:#9ca89f}
+.floor-hidden .layer-icon,.floor-hidden .layer input{opacity:.55}
+.floor-empty{font-size:12px;color:#96a69b;line-height:1.8;padding:6px 10px;margin:4px 0}
+.floor-group>div[hidden]{display:none}
+.layer{display:flex;align-items:center;gap:6px;padding:7px 8px;border-radius:7px;cursor:pointer}
+.layer:hover{background:#f4f8f5}
+.layer.active{background:#e8f5ef;box-shadow:inset 0 0 0 1px #bfe3d6}
+.layer input{font-size:13px;border:0;background:transparent;padding:2px 4px;color:#3c5a4e}
+.layer input:focus{background:#fff;border:1px solid #dce6df}
+.layer .layer-icon{font-size:20px;flex-shrink:0;width:24px;text-align:center;background:none;border:0;padding:0}
+.layer .layer-icon svg{display:block;margin:0 auto}
+.layer .door-badge{font-size:11px;color:#a08a63;background:#faf3e6;border-radius:5px;padding:1px 5px;flex-shrink:0}
+.layer.drop-target{box-shadow:inset 0 2px 0 var(--green)}
+.eye-button{width:26px;height:26px;flex:0 0 26px;padding:3px;display:inline-flex;align-items:center;justify-content:center;color:#517966}
+.eye-button svg{display:block;pointer-events:none}
+.eye-button.is-hidden{color:#a3aca6}
+.eye-button.inherited-hidden{opacity:.45}
+.mini-button{width:26px;height:26px;flex:0 0 26px;font-size:14px;color:#517966;padding:0}
+.layer-actions{position:sticky;bottom:0;background:#fff;display:flex;justify-content:space-between;gap:3px;padding:10px 0;border-top:1px solid var(--line);margin-top:12px;z-index:2}
+.layer-actions button{font-size:12px;padding:7px;border:1px solid var(--line)}
+#layerList{overflow:visible}
+.panel-sub{margin-top:14px;padding-top:12px;border-top:1px dashed var(--line)}
+.slider-field{display:flex;align-items:center;gap:10px;flex-wrap:wrap;margin:10px 0}
+.slider-field input[type=range]{flex:0 0 100%;width:100%;padding:0;border:0;background:transparent;accent-color:var(--green);margin-top:2px}
+.slider-field .value{margin-left:auto;font-size:12px;color:#5c7a6c;font-variant-numeric:tabular-nums}
+.panel-sub button.wide{margin-top:4px}
+.floor-swatch{width:12px;height:12px;border-radius:4px;flex:0 0 12px;border:1px solid #00000012}
+.door-section{margin-top:6px}
+.door-row{display:flex;align-items:center;gap:6px;padding:6px 8px;border-radius:7px;font-size:12px;color:#4d6a5e}
+.door-row:hover{background:#f4f8f5}
+.door-row.active{background:#fdf3e4;box-shadow:inset 0 0 0 1px #ecd9b4}
+.door-row .door-label{flex:1;background:none;border:0;text-align:left;padding:2px 4px;color:inherit;font-size:12px}
+.door-row .mini-button{color:#b0493a}
+.tip{margin-top:16px;padding:14px;border-radius:10px;background:#f2f8f4;border:1px solid #e2efe7}
+.tip b{font-size:13px;color:#3c5a4e}
+.tip p{font-size:12px;color:#7e8f86;line-height:1.7;margin:6px 0 10px}
+.tip button{font-size:12px;padding:7px 10px;background:#fff;border:1px solid #cfe3d9;color:var(--green-dark)}
+.aside-bottom{padding:14px 16px;border-top:1px solid var(--line);font-size:11px;letter-spacing:1.2px;color:#a7b4ad;flex-shrink:0}
+.aside-bottom span{color:#c2ccc6}
+
+#toast{position:fixed;left:50%;bottom:64px;transform:translate(-50%,14px);background:#263e36;color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;opacity:0;pointer-events:none;transition:.22s;z-index:20;box-shadow:0 8px 22px #23413a30}
+#toast.show{opacity:1;transform:translate(-50%,0)}
+
+/* 触屏设备（iPad 等）：放大点击热区，关掉长按菜单与文本选中 */
+#canvas{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
+@media (pointer:coarse){
+  .tools{width:76px;padding:16px 8px;gap:12px}
+  .tools button{width:52px;height:52px;font-size:30px}
+  .tools button svg{width:28px;height:28px}
+  .tools-foot{font-size:11px}
+  .layer{padding:11px 8px}
+  .door-row{padding:9px 8px}
+  .mini-button,.eye-button{width:34px;height:34px;flex:0 0 34px}
+  .floor-heading .floor-fold{width:34px;flex:0 0 34px;height:34px}
+  .segmented button,.white-button{padding:10px 12px}
+  input[type=range]{height:30px}
+  .tools button,.segmented button,.white-button,.layer,.door-row,.eye-button,.mini-button{-webkit-touch-callout:none;-webkit-user-select:none;user-select:none}
+}
+@media(max-width:900px){aside{width:270px}.title{padding-left:16px}.title input{width:150px}header{gap:16px}}
+@media(max-width:720px){main{position:relative}.tools{height:100%}.workspace{height:calc(100% - 230px)}aside{position:absolute;bottom:0;left:50px;right:0;width:auto;height:230px;border-top:1px solid var(--line)}.panel-tabs{flex-shrink:0}#layersPanel,#propertiesPanel{padding:14px}.canvas-top{gap:6px;left:8px;right:8px}.floor-tabs button{padding:6px 8px}.canvas-bottom{bottom:40px}}
+
+</style></head><body>
+<header><div class="title"><input id="projectName" value="未命名关卡" aria-label="关卡名称"><span>关卡设计工作台</span></div><div class="header-actions"><button id="undo" title="撤销 Ctrl+Z">↶</button><button id="redo" title="重做 Ctrl+Shift+Z">↷</button><i></i><button id="export">↓ 导出关卡</button><button id="import">↑ 导入</button><input id="file" type="file" accept="application/json" hidden></div></header>
+<main><nav class="tools" aria-label="绘图工具"><button data-tool="select" class="active" title="选择 / 移动 (V)">↖</button><div class="tool-line"></div><button data-tool="rect" title="方形 (R)">□</button><button data-tool="circle" title="圆形 (C)">○</button><button data-tool="arrow" title="箭头 (A)">↗</button><button data-tool="stairs" title="楼梯 (S)" aria-label="楼梯 (S)"><svg width="25" height="25" viewBox="0 0 25 25" aria-hidden="true"><path d="M3 21V16H9V10H15V4H22V21Z" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linejoin="round"/></svg></button><button data-tool="wall" title="墙体 (W)" aria-label="墙体 (W)"><svg width="25" height="25" viewBox="0 0 25 25" aria-hidden="true"><path d="M3 5h19v7H9v8" fill="none" stroke="currentColor" stroke-width="3.4" stroke-linecap="square" stroke-linejoin="miter"/></svg></button><button data-tool="door" title="门 (D)" aria-label="门 (D)"><svg width="25" height="25" viewBox="0 0 25 25" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"><path d="M5 21V4h9v17"/><path d="M14 21h6"/><path d="M20 21a6 6 0 0 0-6-6"/></g></svg></button><button data-tool="window" title="窗 (N)" aria-label="窗 (N)"><svg width="25" height="25" viewBox="0 0 25 25" aria-hidden="true"><g fill="none" stroke="currentColor" stroke-width="1.7" stroke-linejoin="round"><rect x="4" y="5" width="17" height="15" rx="1.2"/><path d="M12.5 5v15M4 12.5h17"/></g></svg></button><div class="tool-line"></div><button data-tool="vertex" title="编辑顶点 (E)">♧</button><button data-tool="pan" title="平移画布 (H)">✥</button><span class="tools-foot">1:1</span></nav>
+<section class="workspace"><div class="canvas-top"><div class="segmented"><button id="view2" class="active">▦ &nbsp;2D 编辑</button><button id="view3">◇ &nbsp;3D 预览</button></div><div id="floorTabs" class="floor-tabs"></div><div class="segmented compact" role="group" aria-label="拖动模式"><button id="snapGrid" class="active" title="按网格吸附（G 切换）">⊞ 网格</button><button id="snapFree" title="自由拖动，不按格子（G 切换）">✥ 自由</button></div><button id="fit" class="white-button">⌖ 居中</button></div><svg id="canvas" tabindex="0" role="img" aria-label="关卡编辑画布"></svg><div class="empty" id="empty"><span class="empty-icon">▧</span><h1>从一块空间开始</h1><p>选择左侧图形，在网格上拖动绘制</p><div><kbd>R</kbd> 方形 <kbd>C</kbd> 圆形 <kbd>A</kbd> 箭头 <kbd>W</kbd> 墙体 <kbd>D</kbd> 门 <kbd>N</kbd> 窗</div></div><div class="canvas-bottom"><span class="hint" id="hint">拖动图形移动 · 滚轮缩放 · 空格拖动画布</span><div class="zoom"><button id="zoomOut" title="缩小">−</button><span id="zoomLabel">100%</span><button id="zoomIn" title="放大">＋</button></div></div><footer><span><span class="status-dot"></span> <span id="status">准备就绪</span></span><span id="stats">0 个图形</span><span>每格 1 × 1 单位</span></footer></section>
+<aside><div class="panel-tabs"><button class="active" data-panel="layers">▱ 图层</button><button data-panel="properties">⚙ 属性</button></div>
+<div id="layersPanel"><div class="section-title"><h2>楼层与图层</h2><button id="addFloor" title="新增楼层">＋ 楼层</button></div><p class="muted intro">拖动排序 · Alt 拖动复制 · 上方图层优先显示</p><div id="layerList"></div><div class="layer-actions"><button id="layerUp" title="上移图层">↑ 上移</button><button id="layerDown" title="下移图层">↓ 下移</button><button id="copyLayer" title="复制体块（或 Ctrl+C / Ctrl+V）">复制</button><button id="deleteLayer" title="删除体块">删除</button></div>
+<div class="panel-section"><div class="section-title"><h2>空间设置</h2><span class="tag">3D</span></div><p class="muted intro">在楼层标题下修改各层高度，单位与网格一致。新增楼层默认在上一层高度上 +4。</p>
+<div class="two-fields"><label class="field">楼层数量<input id="floorCount" type="number" min="1" max="999" step="1"></label><label class="field">默认层高<input id="gapInput" type="number" min="0.5" max="30" step="0.5"></label></div>
+<label class="field">默认墙高<input id="wallHeightInput" type="number" min="0.1" max="100" step="0.1"></label>
+<div class="field-row"><span class="row-label">拖动模式</span><div class="segmented small" role="group" aria-label="拖动模式"><button id="modeGrid" class="active">⊞ 网格吸附</button><button id="modeFree">✥ 自由拖动</button></div></div>
+<label class="field">吸附步长<select id="snapStep"><option value="1">1 单位（整格）</option><option value="0.5">0.5 单位</option><option value="0.25">0.25 单位</option></select></label>
+<label class="check"><input id="ghost" type="checkbox" checked> 显示其他楼层参考</label><label class="check"><input id="grid" type="checkbox" checked> 显示网格</label>
+<div class="panel-sub"><div class="section-title small"><h3>墙体配色</h3></div><p class="muted intro">新建墙体自动使用所在楼层的颜色；改换所属楼层时也会自动跟随。</p><button class="wide" id="recolorWalls">所有墙体按楼层重新配色</button></div>
+<div class="panel-sub"><div class="section-title small"><h3>3D 显示</h3><span class="tag">3D</span></div>
+<label class="field slider-field">墙体不透明度<span class="value" id="wallOpacityValue"></span><input id="wallOpacity" type="range" min="0" max="100" step="5"></label>
+<label class="field slider-field">门不透明度<span class="value" id="doorOpacityValue"></span><input id="doorOpacity" type="range" min="0" max="100" step="5"></label>
+<label class="field slider-field">窗不透明度<span class="value" id="windowOpacityValue"></span><input id="windowOpacity" type="range" min="0" max="100" step="5"></label>
+<label class="field slider-field">楼板不透明度<span class="value" id="slabOpacityValue"></span><input id="slabOpacity" type="range" min="0" max="100" step="5"></label>
+<p class="muted intro">仅在 3D 预览中生效。调低墙体不透明度可以看清室内布局。</p></div></div>
+<div class="tip"><b>让空间关系一目了然</b><p>在 2D 中绘制平面，切换 3D 查看楼层之间的相对位置。</p><button id="previewLink">打开 3D 预览 ↗</button></div></div>
+<div id="propertiesPanel" hidden><div class="section-title"><h2>图形属性</h2><span id="shapeTag" class="tag">未选择</span></div><div id="noSelection" class="muted intro">选择画布中的图形以编辑属性。</div>
+<div id="shapeProperties" hidden>
+<label class="field">名称<input id="shapeName"></label><label class="field">所属楼层<select id="shapeLayer"></select></label><label class="field">填充颜色<div class="color-row"><input type="color" id="shapeColor"><span id="colorValue"></span></div></label><div id="swatches"></div>
+<div class="two-fields"><label class="field">宽度<input id="shapeWidth" type="number" min="0.1" step="0.1"></label><label class="field">高度<input id="shapeHeight" type="number" min="0.1" step="0.1"></label></div>
+<label class="field">旋转角度 · 15° 步进<input id="rotation" type="number" step="15" value="0"></label><div class="rotation-actions"><button id="rotateLeft" title="逆时针旋转 15 度">↶ −15°</button><button id="rotateRight" title="顺时针旋转 15 度">↷ ＋15°</button></div><p class="muted intro">也可拖动画布中的 ↻ 手柄，自动吸附到 15°。</p>
+<div id="stairsProperties" hidden><div class="two-fields"><label class="field">台阶数量<input id="stairSteps" type="number" min="2" max="64" step="1" value="12"></label><label class="field">上升楼层数<input id="stairFloors" type="number" min="1" max="100" step="1" value="1"></label></div><label class="field">上楼方向<select id="stairReverse"><option value="forward">正向（沿箭头）</option><option value="reverse">反向</option></select></label><p class="muted intro" id="stairsConnection"></p><p class="muted intro">平面箭头指向高处。旋转可调整朝向；3D 中仅保留踏面和立面，楼梯下方留空。</p></div>
+<div id="wallProperties" hidden><div class="two-fields"><label class="field">墙体厚度<input id="wallThickness" type="number" min="0.02" max="10" step="0.02"></label><label class="field">墙体高度<input id="wallHeight" type="number" min="0.1" max="100" step="0.1"></label></div><label class="check"><input id="wallClosed" type="checkbox"> 闭合墙体（首尾相连）</label><p class="muted intro" id="wallSummary"></p><div class="door-section"><div class="section-title small"><h3>门洞</h3><button id="addDoor" title="在墙体上添加门">＋ 门</button></div><div id="doorList"></div><p class="muted intro">点击画布上的门可单独选中；拖动可沿墙滑动或跨段移动。</p></div>
+<div class="door-section"><div class="section-title small"><h3>窗洞</h3><button id="addWindow" title="在墙体上添加窗">＋ 窗</button></div><div id="windowList"></div><p class="muted intro">窗洞下方留窗台、上方留过梁；拖动可沿墙滑动。</p></div><button class="wide" id="editVertices">◇ 编辑顶点</button><p class="muted intro" id="vertexHelp">拖动实心顶点修改轮廓；点击边上的 ＋ 增加顶点。</p></div>
+<div id="doorProperties" hidden><div class="section-title small"><h3>门属性</h3><span id="doorTag" class="tag">门</span></div><label class="field">名称<input id="doorName"></label><label class="field">位置（沿墙 0–1）<input id="doorT" type="number" min="0" max="1" step="0.01"></label><div class="two-fields"><label class="field">门宽<input id="doorWidth" type="number" min="0.1" max="50" step="0.1"></label><label class="field">门高<input id="doorHeight" type="number" min="0.1" max="50" step="0.1"></label></div><label class="field">开向<select id="doorFlip"><option value="1">正向</option><option value="-1">反向</option></select></label><label class="field">状态<select id="doorOpen"><option value="closed">关闭</option><option value="open">开启 90°</option></select></label><label class="field">颜色<div class="color-row"><input type="color" id="doorColor"><span id="doorColorValue"></span></div></label><button class="wide danger" id="deleteDoor">删除这扇门</button></div>
+<div id="windowProperties" hidden><div class="section-title small"><h3>窗属性</h3><span id="windowTag" class="tag">窗</span></div><label class="field">名称<input id="windowName"></label><label class="field">位置（沿墙 0–1）<input id="windowT" type="number" min="0" max="1" step="0.01"></label><div class="two-fields"><label class="field">窗宽<input id="windowWidth" type="number" min="0.1" max="50" step="0.1"></label><label class="field">窗高<input id="windowHeight" type="number" min="0.1" max="50" step="0.1"></label></div><label class="field">窗台高（离本层地面）<input id="windowSill" type="number" min="0" max="50" step="0.1"></label><label class="field">玻璃颜色<div class="color-row"><input type="color" id="windowColor"><span id="windowColorValue"></span></div></label><p class="muted intro" id="windowNote"></p><button class="wide danger" id="deleteWindow">删除这扇窗</button></div>
+<button class="wide danger" id="deleteShape">删除图形</button></div></div><div class="aside-bottom">LEVEL STUDIO <span>把想法变成空间</span></div></aside></main><div id="toast" role="status"></div><script>
+// 几何与模型工具：旋转、楼层高度、楼梯网格、墙体分段、门洞切分。
+function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
+function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
+
+function shade(color, k) {
+  const hex = String(color || '').replace('#', '');
+  if (!/^[0-9a-fA-F]{6}$/.test(hex)) return color;
+  return '#' + hex.match(/../g).map(v => clamp(Math.round(parseInt(v, 16) * k), 0, 255).toString(16).padStart(2, '0')).join('');
+}
+
+function snapRotation(value) {
+  const n = Number(value);
+  return Number.isFinite(n) ? ((Math.round(n / 15) * 15) % 360 + 360) % 360 : 0;
+}
+function rotationCenter(s) {
+  if (s.type === 'circle') {
+    const xs = s.points.map(p => p.x), ys = s.points.map(p => p.y);
+    return { x: (Math.min(...xs) + Math.max(...xs)) / 2, y: (Math.min(...ys) + Math.max(...ys)) / 2 };
+  }
+  return s.points.reduce((c, p) => ({ x: c.x + p.x / s.points.length, y: c.y + p.y / s.points.length }), { x: 0, y: 0 });
+}
+function rotateShapeTo(s, value) {
+  const target = snapRotation(value), angle = (target - (s.rotation || 0)) * Math.PI / 180, c = rotationCenter(s);
+  if (s.type !== 'circle') {
+    s.points = s.points.map(p => ({
+      x: c.x + (p.x - c.x) * Math.cos(angle) - (p.y - c.y) * Math.sin(angle),
+      y: c.y + (p.x - c.x) * Math.sin(angle) + (p.y - c.y) * Math.cos(angle)
+    }));
+  }
+  s.rotation = target;
+  return target;
+}
+
+function floorVisible(level, f) { return !(level.hiddenFloors || []).includes(f); }
+function floorHeight(level, f) {
+  const heights = level.floorHeights;
+  if (heights && Number.isFinite(heights[f])) return heights[f];
+  if (!heights || level.floors.includes(f)) return (f - 1) * (level.gap || 4);
+  const below = level.floors.filter(n => n < f), anchor = below.length ? Math.max(...below) : Math.min(...level.floors);
+  return floorHeight(level, anchor) + (f - anchor) * 4;
+}
+function stairRise(level, s) {
+  const l = level.layers.find(x => x.id === s.layer);
+  if (!l) return level.gap || 4;
+  return floorHeight(level, l.floor + (s.stairFloors || 1)) - floorHeight(level, l.floor);
+}
+function layerVisible(level, l) { return !!l && l.visible !== false && floorVisible(level, l.floor); }
+
+function bounds(points) {
+  const xs = points.map(p => p.x), ys = points.map(p => p.y);
+  const x = Math.min(...xs), y = Math.min(...ys);
+  return { x, y, w: Math.max(...xs) - x, h: Math.max(...ys) - y };
+}
+function geometry(s) {
+  const b = bounds(s.points);
+  if (s.type === 'circle') {
+    return Array.from({ length: 64 }, (_, i) => ({
+      x: b.x + b.w / 2 + Math.cos(i * Math.PI / 32) * b.w / 2,
+      y: b.y + b.h / 2 + Math.sin(i * Math.PI / 32) * b.h / 2
+    }));
+  }
+  return s.points;
+}
+function previewGridBounds(level) {
+  const visible = new Set(level.layers.filter(l => layerVisible(level, l)).map(l => l.id));
+  let minX = Infinity, minY = Infinity, maxX = -Infinity, maxY = -Infinity;
+  for (const s of level.shapes) {
+    if (!visible.has(s.layer)) continue;
+    for (const p of s.points) { minX = Math.min(minX, p.x); minY = Math.min(minY, p.y); maxX = Math.max(maxX, p.x); maxY = Math.max(maxY, p.y); }
+  }
+  if (!Number.isFinite(minX)) return { x: -10, y: -8, w: 20, h: 16 };
+  const cx = (minX + maxX) / 2, cy = (minY + maxY) / 2;
+  const w = Math.max(20, maxX - minX + 4), h = Math.max(16, maxY - minY + 4);
+  const x = Math.floor(cx - w / 2), y = Math.floor(cy - h / 2);
+  return { x, y, w: Math.ceil(cx + w / 2) - x, h: Math.ceil(cy + h / 2) - y };
+}
+
+/* ---------------- 楼梯 ---------------- */
+function stairPoint(s, u, v, z = 0) {
+  const [a, b, , d] = s.points; const t = s.stairReverse ? 1 - v : v;
+  return { x: a.x + (b.x - a.x) * u + (d.x - a.x) * t, y: a.y + (b.y - a.y) * u + (d.y - a.y) * t, z };
+}
+function stairDimensions(s) {
+  const [a, b, , d] = s.points;
+  return { w: Math.hypot(b.x - a.x, b.y - a.y), h: Math.hypot(d.x - a.x, d.y - a.y) };
+}
+function stairRectangle(a, ux, uy, w, h) {
+  return [{ ...a }, { x: a.x + ux.x * w, y: a.y + ux.y * w }, { x: a.x + ux.x * w + uy.x * h, y: a.y + ux.y * w + uy.y * h }, { x: a.x + uy.x * h, y: a.y + uy.y * h }];
+}
+function stairAxes(s) {
+  const [a, b, , d] = s.points, dim = stairDimensions(s);
+  return {
+    ux: { x: (b.x - a.x) / Math.max(.001, dim.w), y: (b.y - a.y) / Math.max(.001, dim.w) },
+    uy: { x: (d.x - a.x) / Math.max(.001, dim.h), y: (d.y - a.y) / Math.max(.001, dim.h) }
+  };
+}
+function resizeStair(s, start, q, index) {
+  const { ux, uy } = stairAxes(start), op = start.points[(index + 2) % 4];
+  const dx = q.x - op.x, dy = q.y - op.y, sx = index === 0 || index === 3 ? -1 : 1, sy = index < 2 ? -1 : 1;
+  const w = Math.max(.1, (dx * ux.x + dy * ux.y) * sx), h = Math.max(.1, (dx * uy.x + dy * uy.y) * sy);
+  const a = { x: op.x - (sx < 0 ? ux.x * w : 0) - (sy < 0 ? uy.x * h : 0), y: op.y - (sx < 0 ? ux.y * w : 0) - (sy < 0 ? uy.y * h : 0) };
+  s.points = stairRectangle(a, ux, uy, w, h);
+}
+function sizeStair(s, axis, value) {
+  const { ux, uy } = stairAxes(s), d = stairDimensions(s);
+  s.points = stairRectangle(s.points[0], ux, uy, axis === 'Width' ? value : d.w, axis === 'Height' ? value : d.h);
+}
+function stairMesh(s, gap, riseOverride) {
+  const count = s.stairSteps || 12, rise = Number.isFinite(riseOverride) ? riseOverride : (s.stairFloors || 1) * gap, faces = [];
+  const add = (points, k, kind) => faces.push({ points, shade: k, kind });
+  for (let i = 0; i < count; i++) {
+    const v = i / count, w = (i + 1) / count, z = (i + 1) * rise / count, low = i * rise / count;
+    add([stairPoint(s, 0, v, z), stairPoint(s, 1, v, z), stairPoint(s, 1, w, z), stairPoint(s, 0, w, z)], 1, 'tread');
+    add([stairPoint(s, 0, v, low), stairPoint(s, 1, v, low), stairPoint(s, 1, v, z), stairPoint(s, 0, v, z)], .67, 'riser');
+  }
+  return faces;
+}
+
+/* ---------------- 墙体 ---------------- */
+// 墙是一条折线；closed 时首尾相连。返回 [{a,b,index}]
+function wallSegments(wall) {
+  const pts = wall.points || [], segs = [];
+  const n = wall.closed ? pts.length : pts.length - 1;
+  for (let i = 0; i < n; i++) segs.push({ a: pts[i], b: pts[(i + 1) % pts.length], index: i });
+  return segs.filter(s => dist(s.a, s.b) > 1e-6).map((s, i) => ({ ...s, index: i }));
+}
+function wallLength(wall) {
+  return wallSegments(wall).reduce((sum, s) => sum + dist(s.a, s.b), 0);
+}
+// 一段墙上的所有开口（门 + 窗）：{kind,ref,s0,s1,z0,z1}
+// 门从地面开始（sill=0），窗有窗台高 sill，二者都保留上方过梁。
+function wallOpenings(wall, segIndex) {
+  const segs = wallSegments(wall), seg = segs[segIndex];
+  if (!seg) return [];
+  const len = dist(seg.a, seg.b), H = wall.height || 3, items = [];
+  const push = (kind, ref) => {
+    const w = clamp(ref.width || 1, .02, len);
+    const c = clamp(ref.t, 0, 1) * len;
+    const z0 = clamp(ref.sill || 0, 0, H);
+    items.push({
+      kind, ref,
+      s0: clamp(c - w / 2, 0, len), s1: clamp(c + w / 2, 0, len),
+      z0, z1: clamp(z0 + (ref.height || 1), 0, H)
+    });
+  };
+  for (const d of (wall.doors || [])) if (d.seg === segIndex) push('door', d);
+  for (const w of (wall.windows || [])) if (w.seg === segIndex) push('window', w);
+  return items.sort((a, b) => a.s0 - b.s0);
+}
+// 2D 平面图上的连续实体段（开口处断开）
+function wallPlanSpans(wall, segIndex) {
+  const segs = wallSegments(wall), seg = segs[segIndex];
+  if (!seg) return [];
+  const len = dist(seg.a, seg.b), spans = [];
+  let cur = 0;
+  for (const o of wallOpenings(wall, segIndex)) {
+    if (o.s0 - cur > 1e-4) spans.push({ t0: cur, t1: o.s0 });
+    cur = Math.max(cur, o.s1);
+  }
+  if (len - cur > 1e-4) spans.push({ t0: cur, t1: len });
+  return spans;
+}
+// 3D：把一段墙按开口切成竖直体块 {t0,t1,h0,h1}（h 相对本层地面）
+function wallSpans(wall, segIndex) {
+  const segs = wallSegments(wall), seg = segs[segIndex];
+  if (!seg) return [];
+  const len = dist(seg.a, seg.b), H = wall.height || 3, spans = [];
+  let cur = 0;
+  for (const o of wallOpenings(wall, segIndex)) {
+    if (o.s0 - cur > 1e-4) spans.push({ t0: cur, t1: o.s0, h0: 0, h1: H });          // 开口左侧墙垛
+    if (o.z0 > 1e-4) spans.push({ t0: o.s0, t1: o.s1, h0: 0, h1: o.z0 });            // 窗台以下
+    if (H - o.z1 > 1e-4) spans.push({ t0: o.s0, t1: o.s1, h0: o.z1, h1: H });        // 开口上方过梁
+    cur = Math.max(cur, o.s1);
+  }
+  if (len - cur > 1e-4) spans.push({ t0: cur, t1: len, h0: 0, h1: H });
+  return spans.filter(s => s.t1 - s.t0 > 1e-4 && s.h1 - s.h0 > 1e-4);
+}
+// 开口的平面锚点（世界坐标）
+function openingAnchor(wall, item) {
+  const segs = wallSegments(wall), seg = segs[item.seg] || segs[0];
+  if (!seg) return null;
+  const len = dist(seg.a, seg.b) || .001;
+  const dir = { x: (seg.b.x - seg.a.x) / len, y: (seg.b.y - seg.a.y) / len };
+  const nrm = { x: -dir.y, y: dir.x };
+  const w = clamp(item.width || 1, .02, len);
+  const c = clamp(item.t, 0, 1) * len;
+  const s0 = clamp(c - w / 2, 0, len), s1 = clamp(c + w / 2, 0, len);
+  const at = t => ({ x: seg.a.x + dir.x * t, y: seg.a.y + dir.y * t });
+  const flip = item.flip === -1 ? -1 : 1;
+  const hinge = at(s0), jamb = at(s1);
+  return {
+    seg, dir, nrm, len, width: w, hinge, jamb,
+    center: at((s0 + s1) / 2),
+    tip: { x: hinge.x + nrm.x * flip * w, y: hinge.y + nrm.y * flip * w },
+    s0, s1
+  };
+}
+function doorAnchor(wall, door) { return openingAnchor(wall, door); }
+// 世界点投影到某面墙最近的段，用于放门 / 拖门
+function nearestOnWall(wall, p) {
+  let best = null;
+  for (const seg of wallSegments(wall)) {
+    const len = dist(seg.a, seg.b) || .001;
+    const dx = (seg.b.x - seg.a.x) / len, dy = (seg.b.y - seg.a.y) / len;
+    const t = clamp(((p.x - seg.a.x) * dx + (p.y - seg.a.y) * dy) / len, 0, 1);
+    const q = { x: seg.a.x + dx * len * t, y: seg.a.y + dy * len * t };
+    const d = dist(p, q);
+    if (!best || d < best.d) best = { d, seg: seg.index, t, len, point: q };
+  }
+  return best;
+}
+function openingCounts(state) {
+  let doors = 0, windows = 0;
+  for (const s of state.shapes) if (s.type === 'wall') { doors += (s.doors || []).length; windows += (s.windows || []).length; }
+  return { doors, windows };
+}
+if (typeof module !== 'undefined') module.exports = { clamp, dist, shade, snapRotation, rotationCenter, rotateShapeTo, floorVisible, floorHeight, stairRise, layerVisible, bounds, geometry, previewGridBounds, stairPoint, stairDimensions, resizeStair, sizeStair, stairMesh, wallSegments, wallLength, wallOpenings, wallPlanSpans, wallSpans, openingAnchor, doorAnchor, nearestOnWall, openingCounts };
+
+;
+/* 多层关卡设计工作台
+   在参考实现之上新增：自由拖动编辑模式、任意楼层数量、墙体与门洞编辑。 */
+const $ = id => document.getElementById(id);
+const NS = 'http://www.w3.org/2000/svg';
+const svg = $('canvas');
+
+const DOOR_COLOR = '#c8a06a';   // 墙体颜色跟随所在楼层，门用独立的木色
+const WINDOW_COLOR = '#9ec9e8'; // 玻璃色
+const TYPE_NAME = { rect: '方形', circle: '圆形', arrow: '箭头', stairs: '楼梯', wall: '墙体' };
+const TYPE_LABEL = { rect: '多边形', circle: '圆形', arrow: '箭头', stairs: '楼梯', wall: '墙体' };
+const TYPE_ICON = { rect: '□', circle: '○', arrow: '↗', stairs: '▟', wall: '▮' };
+const PALETTE = ['#22ad88', '#67a8d1', '#dfb76a', '#b18bc7', '#df8b82', '#6e8499'];
+const MAX_FLOORS = 999;
+
+let serial = 0;
+const uid = p => p + Date.now().toString(36) + '-' + (serial++);
+// 楼层配色：同一层的所有体块（含墙体）共用一种颜色
+const floorColor = f => PALETTE[((f - 1) % PALETTE.length + PALETTE.length) % PALETTE.length];
+
+function defaultState() {
+  const floors = [1, 2, 3, 4, 5], floorHeights = {};
+  floors.forEach((f, i) => floorHeights[f] = i * 4);
+  return {
+    name: '未命名关卡', floors, floorHeights, hiddenFloors: [], layers: [], shapes: [],
+    gap: 4, wallHeight: 3, snapMode: 'grid', snapStep: 1,
+    opacity: { wall: .9, door: .85, window: .35, slab: .5 }
+  };
+}
+
+let state = defaultState();
+let activeLayer = null, floor = 1, selected = null, selectedDoor = null, selectedWindow = null;
+let tool = 'select', view = '2', zoom = 1, pan = { x: 0, y: 0 }, angle = -.65, tilt = .62;
+let history = [], future = [], drag = null, space = false, wallDraft = null;
+const collapsedFloors = new Set();
+let objectClipboard = null, pasteCount = 0;
+
+/* ---------- 基础工具 ---------- */
+function el(tag, attrs = {}, parent = svg) {
+  const n = document.createElementNS(NS, tag);
+  for (const k in attrs) n.setAttribute(k, attrs[k]);
+  if (parent) parent.appendChild(n);
+  return n;
+}
+const clone = v => JSON.parse(JSON.stringify(v));
+function checkpoint() { history.push(clone(state)); if (history.length > 80) history.shift(); future = []; undoButtons(); }
+function undoButtons() { $('undo').disabled = !history.length; $('redo').disabled = !future.length; }
+function toast(msg) {
+  $('toast').textContent = msg; $('toast').classList.add('show');
+  clearTimeout(toast.timer); toast.timer = setTimeout(() => $('toast').classList.remove('show'), 2400);
+}
+const layer = s => state.layers.find(l => l.id === s.layer);
+const shape = () => state.shapes.find(s => s.id === selected) || null;
+const shapeOfLayer = id => state.shapes.find(s => s.layer === id) || null;
+// 开口（门 / 窗）都挂在墙上，用这两个 id 记录当前选中的是谁
+const OPEN_KEY = { door: 'doors', window: 'windows' };
+function clearOpening() { selectedDoor = null; selectedWindow = null; }
+function openingList(wall, kind) { return wall[OPEN_KEY[kind]] || (wall[OPEN_KEY[kind]] = []); }
+function currentOpening() {
+  const s = shape(); if (!s) return null;
+  for (const kind of ['window', 'door']) {
+    const id = kind === 'window' ? selectedWindow : selectedDoor;
+    if (!id) continue;
+    const obj = (s[OPEN_KEY[kind]] || []).find(o => o.id === id);
+    if (obj) return { kind, wall: s, obj };
+  }
+  return null;
+}
+const ptsOf = a => a.map(p => `${p.x},${p.y}`).join(' ');
+function segPoint(seg, t) { const len = dist(seg.a, seg.b) || 1; const k = t / len; return { x: seg.a.x + (seg.b.x - seg.a.x) * k, y: seg.a.y + (seg.b.y - seg.a.y) * k }; }
+
+/* ---------- 视图与吸附 ---------- */
+function unit() { return 40 * zoom; }
+function center() { return { x: svg.clientWidth / 2 + pan.x, y: svg.clientHeight / 2 + pan.y }; }
+function project(p, f = 1) {
+  const c = center(), u = unit();
+  if (view === '2') return { x: c.x + p.x * u, y: c.y + p.y * u };
+  const ca = Math.cos(angle), sa = Math.sin(angle);
+  return { x: c.x + (p.x * ca - p.y * sa) * u, y: c.y + (p.x * sa + p.y * ca) * u * Math.sin(tilt) - floorHeight(state, f) * u * Math.cos(tilt) };
+}
+function projectAt(p, f) { const q = project(p, f); if (view === '3') q.y -= (p.z || 0) * unit() * Math.cos(tilt); return q; }
+function world(e) {
+  const r = svg.getBoundingClientRect(), c = center();
+  return { x: (e.clientX - r.left - c.x) / unit(), y: (e.clientY - r.top - c.y) / unit() };
+}
+function localOf(x, y) { const r = svg.getBoundingClientRect(); return { x: x - r.left, y: y - r.top }; }
+
+/* 触屏：双指缩放 + 平移（iPad / 安卓平板 / 触屏笔记本） */
+const touchPointers = new Map();
+let gesture = null;
+const isCoarse = () => !!(window.matchMedia && window.matchMedia('(pointer: coarse)').matches);
+function startGesture() {
+  const [a, b] = [...touchPointers.values()];
+  gesture = {
+    dist: Math.max(1, Math.hypot(a.x - b.x, a.y - b.y)),
+    center: { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 },
+    zoom, pan: { ...pan }
+  };
+}
+function updateGesture() {
+  const [a, b] = [...touchPointers.values()];
+  const c = { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 };
+  const d = Math.max(1, Math.hypot(a.x - b.x, a.y - b.y));
+  const z = clamp(gesture.zoom * (d / gesture.dist), .005, 3);
+  const sc = { x: svg.clientWidth / 2, y: svg.clientHeight / 2 };
+  // 手势开始时中心点下的世界坐标，始终跟在当前双指中心下（2D / 3D 通用）
+  const k = {
+    x: (gesture.center.x - sc.x - gesture.pan.x) / (40 * gesture.zoom),
+    y: (gesture.center.y - sc.y - gesture.pan.y) / (40 * gesture.zoom)
+  };
+  zoom = z;
+  pan = { x: c.x - sc.x - k.x * 40 * z, y: c.y - sc.y - k.y * 40 * z };
+  render();
+}
+// 自由拖动模式下不做任何吸附；网格模式按步长吸附；Shift 临时反转当前模式
+function quantP(p, invert = false) {
+  const snapped = state.snapMode !== 'free';
+  if (!(invert ? !snapped : snapped)) return { x: p.x, y: p.y };
+  const s = state.snapStep || 1;
+  return { x: Math.round(p.x / s) * s, y: Math.round(p.y / s) * s };
+}
+function setSnapMode(mode) {
+  state.snapMode = mode === 'free' ? 'free' : 'grid';
+  $('snapGrid').classList.toggle('active', state.snapMode === 'grid');
+  $('snapFree').classList.toggle('active', state.snapMode === 'free');
+  $('modeGrid').classList.toggle('active', state.snapMode === 'grid');
+  $('modeFree').classList.toggle('active', state.snapMode === 'free');
+  $('snapStep').disabled = state.snapMode === 'free';
+  render();
+}
+
+/* ---------- 渲染：2D ---------- */
+function drawGrid2D() {
+  const c = center(), u = unit(), defs = el('defs');
+  const pattern = el('pattern', { id: 'gridpattern', width: u, height: u, patternUnits: 'userSpaceOnUse', x: c.x, y: c.y }, defs);
+  el('path', { d: `M ${u} 0 L 0 0 0 ${u}`, fill: 'none', stroke: '#dfe5dd', 'stroke-width': .7 }, pattern);
+  el('rect', { width: '100%', height: '100%', fill: 'url(#gridpattern)' });
+  el('line', { x1: c.x, x2: c.x, y1: 0, y2: svg.clientHeight, stroke: '#c8d6c9', 'stroke-width': 1 });
+  el('line', { x1: 0, x2: svg.clientWidth, y1: c.y, y2: c.y, stroke: '#c8d6c9', 'stroke-width': 1 });
+}
+function sweepFlag(c, s, e) {
+  const a0 = Math.atan2(s.y - c.y, s.x - c.x), a1 = Math.atan2(e.y - c.y, e.x - c.x);
+  let d = a1 - a0;
+  while (d <= -Math.PI) d += Math.PI * 2;
+  while (d > Math.PI) d -= Math.PI * 2;
+  return d > 0 ? 1 : 0;
+}
+function drawWall2D(s, f, active) {
+  const u = unit(), th = Math.max(1.6, (s.thickness || .2) * u);
+  const g = el('g', { 'pointer-events': 'none', opacity: active ? 1 : .2 });
+  const segs = wallSegments(s);
+  segs.forEach((seg, i) => {
+    for (const sp of wallPlanSpans(s, i)) {   // 平面上开口处断开
+      const A = project(segPoint(seg, sp.t0), f), B = project(segPoint(seg, sp.t1), f);
+      el('line', { x1: A.x, y1: A.y, x2: B.x, y2: B.y, stroke: s.color, 'stroke-width': th, 'stroke-linecap': 'butt' }, g);
+    }
+  });
+  for (const d of (s.doors || [])) {
+    const an = openingAnchor(s, d); if (!an) continue;
+    const c = doorColor(d);
+    const hinge = project(an.hinge, f), tip = project(an.tip, f), jamb = project(an.jamb, f);
+    const r = Math.max(2, dist(hinge, tip));
+    el('line', { x1: hinge.x, y1: hinge.y, x2: tip.x, y2: tip.y, stroke: c, 'stroke-width': Math.max(2, th * .5), 'stroke-linecap': 'round' }, g);
+    el('path', { d: `M${tip.x},${tip.y} A${r},${r} 0 0 ${sweepFlag(hinge, tip, jamb)} ${jamb.x},${jamb.y}`, fill: 'none', stroke: shade(c, .75), 'stroke-width': 1.2, 'stroke-dasharray': '4 3' }, g);
+  }
+  for (const w of (s.windows || [])) {
+    const an = openingAnchor(s, w); if (!an) continue;
+    const c = windowColor(w);
+    const a = project(an.hinge, f), b = project(an.jamb, f);
+    const half = { x: an.nrm.x * (s.thickness || .2) / 2 * u, y: an.nrm.y * (s.thickness || .2) / 2 * u };
+    el('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: c, 'stroke-width': Math.max(2, th * .75), 'stroke-linecap': 'butt' }, g); // 玻璃
+    el('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: shade(c, .55), 'stroke-width': .9 }, g);                                   // 中线
+    for (const p of [a, b]) {                                                                                                          // 两侧窗框
+      el('line', { x1: p.x - half.x, y1: p.y - half.y, x2: p.x + half.x, y2: p.y + half.y, stroke: shade(c, .5), 'stroke-width': 1.4 }, g);
+    }
+  }
+}
+function doorColor(d) { return d.color || DOOR_COLOR; }
+function windowColor(w) { return w.color || WINDOW_COLOR; }
+function drawShapes2D() {
+  const order = [...state.floors.filter(f => f !== floor), floor];
+  for (const f of order) {
+    const cur = f === floor;
+    if (!cur && !$('ghost').checked) continue;
+    for (const l of state.layers) {
+      if (l.floor !== f || !layerVisible(state, l)) continue;
+      const s = shapeOfLayer(l.id); if (!s) continue;
+      if (s.type === 'wall') { drawWall2D(s, f, cur); continue; }
+      const points = geometry(s).map(p => project(p, f));
+      el('polygon', {
+        points: ptsOf(points), fill: s.color, 'fill-opacity': cur ? .52 : .1, stroke: s.color,
+        'stroke-width': selected === s.id ? 2.5 : 1.5, 'stroke-opacity': cur ? 1 : .25,
+        'data-shape': s.id, 'pointer-events': cur && !l.locked ? 'all' : 'none',
+        cursor: tool === 'select' ? 'move' : 'crosshair'
+      });
+      if (s.type === 'stairs') drawStairPlan(s, f, cur ? 1 : .25);
+    }
+  }
+  // 墙体的点击热区（画在上层，保证门可点）
+  for (const l of state.layers) {
+    if (l.floor !== floor || !layerVisible(state, l) || l.locked) continue;
+    const s = shapeOfLayer(l.id); if (!s || s.type !== 'wall') continue;
+    const u = unit(), th = Math.max(1.6, (s.thickness || .2) * u);
+    const pts = (s.closed ? [...s.points, s.points[0]] : s.points).map(p => project(p, floor));
+    if (pts.length < 2) continue;
+    el('path', {
+      d: 'M' + pts.map(p => `${p.x},${p.y}`).join(' L'), fill: 'none', stroke: s.color, 'stroke-opacity': 0,
+      'stroke-width': Math.max(14, th + 10), 'pointer-events': 'stroke', 'data-shape': s.id,
+      'stroke-linecap': 'round', 'stroke-linejoin': 'round', cursor: tool === 'select' ? 'move' : 'crosshair'
+    });
+    for (const d of (s.doors || [])) {
+      const an = openingAnchor(s, d); if (!an) continue;
+      const hinge = project(an.hinge, floor), tip = project(an.tip, floor);
+      el('path', {
+        d: `M${hinge.x},${hinge.y} L${tip.x},${tip.y}`, fill: 'none', stroke: doorColor(d), 'stroke-opacity': 0,
+        'stroke-width': 18, 'pointer-events': 'stroke', 'data-door': d.id, cursor: 'move'
+      });
+    }
+    for (const w of (s.windows || [])) {
+      const an = openingAnchor(s, w); if (!an) continue;
+      const a = project(an.hinge, floor), b = project(an.jamb, floor);
+      el('path', {
+        d: `M${a.x},${a.y} L${b.x},${b.y}`, fill: 'none', stroke: windowColor(w), 'stroke-opacity': 0,
+        'stroke-width': 18, 'pointer-events': 'stroke', 'data-window': w.id, cursor: 'move'
+      });
+    }
+  }
+}
+function drawStairPlan(s, f, opacity) {
+  if (s.points.length !== 4) return;
+  const g = el('g', { 'pointer-events': 'none', opacity });
+  for (let i = 1; i < (s.stairSteps || 12); i++) {
+    const a = project(stairPoint(s, 0, i / (s.stairSteps || 12)), f), b = project(stairPoint(s, 1, i / (s.stairSteps || 12)), f);
+    el('line', { x1: a.x, y1: a.y, x2: b.x, y2: b.y, stroke: s.color, 'stroke-width': 1 }, g);
+  }
+  const a = project(stairPoint(s, .5, .12), f), b = project(stairPoint(s, .5, .85), f);
+  const dx = b.x - a.x, dy = b.y - a.y, len = Math.max(1, Math.hypot(dx, dy)), ux = dx / len, uy = dy / len;
+  el('path', {
+    d: `M${a.x},${a.y} L${b.x},${b.y} M${b.x - ux * 8 - uy * 5},${b.y - uy * 8 + ux * 5} L${b.x},${b.y} L${b.x - ux * 8 + uy * 5},${b.y - uy * 8 - ux * 5}`,
+    stroke: shade(s.color, .55), 'stroke-width': 2, fill: 'none'
+  }, g);
+}
+function drawVertexHandles(s) {
+  const pts = s.points, closed = s.type === 'rect' ? true : !!s.closed;
+  pts.forEach((p, i) => {
+    const a = project(p);
+    const next = pts[(i + 1) % pts.length];
+    if (closed || i < pts.length - 1) {
+      const m = project({ x: (p.x + next.x) / 2, y: (p.y + next.y) / 2 });
+      el('circle', { cx: m.x, cy: m.y, r: 8, fill: '#fff', stroke: '#0a9f80', 'data-mid': i, cursor: 'copy' });
+      const t = el('text', { x: m.x, y: m.y + 4, 'text-anchor': 'middle', fill: '#0a9f80', 'font-size': 12, 'pointer-events': 'none' });
+      t.textContent = '+';
+    }
+    el('circle', { cx: a.x, cy: a.y, r: 5, fill: '#0a9f80', stroke: '#fff', 'stroke-width': 2, 'data-vertex': i, cursor: 'move' });
+  });
+}
+function drawResizeHandles(s) {
+  const b = bounds(s.points);
+  const a = project(b), z = project({ x: b.x + b.w, y: b.y + b.h });
+  el('rect', { x: a.x - 3, y: a.y - 3, width: z.x - a.x + 6, height: z.y - a.y + 6, fill: 'none', stroke: '#159e80', 'stroke-dasharray': '4 3', 'pointer-events': 'none' });
+  const corners = s.type === 'stairs' ? s.points.map((p, i) => [i, p]) : [[0, { x: b.x, y: b.y }], [1, { x: b.x + b.w, y: b.y }], [2, { x: b.x + b.w, y: b.y + b.h }], [3, { x: b.x, y: b.y + b.h }]];
+  for (const [i, p] of corners) {
+    const q = project(p);
+    el('rect', { x: q.x - 4, y: q.y - 4, width: 8, height: 8, rx: 1, fill: '#fff', stroke: '#149d7d', 'data-resize': i, cursor: i % 2 ? 'nesw-resize' : 'nwse-resize' });
+  }
+}
+function drawRotationControl(s) {
+  const c = project(rotationCenter(s)), b = bounds(s.points);
+  const radius = Math.hypot(b.w, b.h) * 20 * zoom + 25, a = ((s.rotation || 0) - 90) * Math.PI / 180;
+  const p = { x: c.x + Math.cos(a) * radius, y: c.y + Math.sin(a) * radius };
+  el('line', { x1: c.x, y1: c.y, x2: p.x, y2: p.y, stroke: '#128b73', 'stroke-width': 1, 'stroke-dasharray': '3 4', 'pointer-events': 'none' });
+  el('circle', { cx: p.x, cy: p.y, r: 10, fill: '#fff', stroke: '#128b73', 'stroke-width': 1.5, 'data-rotate': 'true', cursor: 'grab' });
+  const label = el('text', { x: p.x, y: p.y + 4, 'text-anchor': 'middle', fill: '#128b73', 'font-size': 13, 'pointer-events': 'none' });
+  label.textContent = '↻';
+}
+function drawOverlay() {
+  const s = shape();
+  if (!s || view !== '2') return;
+  const l = layer(s);
+  if (!l || l.floor !== floor || !layerVisible(state, l) || l.locked) return;
+  if (tool !== 'select' && tool !== 'vertex') return;
+  if (s.type === 'wall') {
+    if (tool === 'vertex') drawVertexHandles(s);
+    else {
+      const b = bounds(s.points), a = project(b), z = project({ x: b.x + b.w, y: b.y + b.h });
+      el('rect', { x: a.x - 4, y: a.y - 4, width: z.x - a.x + 8, height: z.y - a.y + 8, fill: 'none', stroke: '#159e80', 'stroke-dasharray': '4 3', 'pointer-events': 'none' });
+      for (const d of (s.doors || [])) {
+        const an = openingAnchor(s, d); if (!an) continue;
+        const q = project(an.center);
+        el('rect', { x: q.x - 5, y: q.y - 5, width: 10, height: 10, rx: 2, fill: selectedDoor === d.id ? DOOR_COLOR : '#fff', stroke: '#a5823f', 'stroke-width': 1.5, 'data-door': d.id, cursor: 'move' });
+      }
+      for (const w of (s.windows || [])) {
+        const an = openingAnchor(s, w); if (!an) continue;
+        const q = project(an.center);
+        el('rect', { x: q.x - 5, y: q.y - 5, width: 10, height: 10, rx: 2, fill: selectedWindow === w.id ? WINDOW_COLOR : '#fff', stroke: '#5b8fb5', 'stroke-width': 1.5, 'data-window': w.id, cursor: 'move' });
+      }
+    }
+    drawRotationControl(s);
+    return;
+  }
+  if (tool === 'vertex' && s.type === 'rect') drawVertexHandles(s);
+  else drawResizeHandles(s);
+  drawRotationControl(s);
+}
+
+/* ---------- 渲染：3D ---------- */
+function sideShade(color, n) {
+  const ca = Math.cos(angle), sa = Math.sin(angle);
+  const nx = n.x * ca - n.y * sa, ny = n.x * sa + n.y * ca;
+  const d = nx * -.5 + ny * -.86;
+  return shade(color, clamp(.58 + .22 * d, .34, .8));
+}
+function pushWallFaces(wall, f, faces, opacity = 1) {
+  const segs = wallSegments(wall), half = (wall.thickness || .2) / 2, H = wall.height || 3;
+  const z = (p, h) => ({ x: p.x, y: p.y, z: h });
+  segs.forEach((seg, i) => {
+    const len = dist(seg.a, seg.b); if (len < 1e-6) return;
+    const dir = { x: (seg.b.x - seg.a.x) / len, y: (seg.b.y - seg.a.y) / len }, nrm = { x: -dir.y, y: dir.x };
+    for (const sp of wallSpans(wall, i)) {
+      const A = { x: seg.a.x + dir.x * sp.t0, y: seg.a.y + dir.y * sp.t0 };
+      const B = { x: seg.a.x + dir.x * sp.t1, y: seg.a.y + dir.y * sp.t1 };
+      const p0 = { x: A.x + nrm.x * half, y: A.y + nrm.y * half }, p1 = { x: B.x + nrm.x * half, y: B.y + nrm.y * half };
+      const p2 = { x: B.x - nrm.x * half, y: B.y - nrm.y * half }, p3 = { x: A.x - nrm.x * half, y: A.y - nrm.y * half };
+      const stroke = shade(wall.color, .6);
+      faces.push({ points: [z(p0, sp.h1), z(p1, sp.h1), z(p2, sp.h1), z(p3, sp.h1)], f, color: shade(wall.color, 1), stroke, kind: 'wall-top', id: wall.id, opacity, depthBias: .6 });
+      faces.push({ points: [z(p0, sp.h1), z(p1, sp.h1), z(p1, sp.h0), z(p0, sp.h0)], f, color: sideShade(wall.color, nrm), stroke, kind: 'wall-side', id: wall.id, opacity, depthBias: 0 });
+      faces.push({ points: [z(p3, sp.h1), z(p2, sp.h1), z(p2, sp.h0), z(p3, sp.h0)], f, color: sideShade(wall.color, { x: -nrm.x, y: -nrm.y }), stroke, kind: 'wall-side', id: wall.id, opacity, depthBias: 0 });
+    }
+  });
+}
+function pushDoorLeaf(wall, d, f, faces, opacity = .95) {
+  const an = openingAnchor(wall, d); if (!an) return;
+  const dh = Math.min(d.height || 2.1, wall.height || 3), c = doorColor(d);
+  const b = d.open ? an.tip : an.jamb;   // 关闭时门扇填满门洞，开启时甩出 90°
+  faces.push({
+    points: [{ ...an.hinge, z: 0 }, { ...b, z: 0 }, { ...b, z: dh }, { ...an.hinge, z: dh }],
+    f, color: shade(c, .85), stroke: shade(c, .5), kind: 'door', id: wall.id, opacity, depthBias: .3
+  });
+}
+function pushWindowPane(wall, w, f, faces, opacity = .35) {
+  const an = openingAnchor(wall, w); if (!an) return;
+  const H = wall.height || 3;
+  const z0 = clamp(w.sill || 0, 0, H), z1 = clamp(z0 + (w.height || 1.4), 0, H);
+  if (z1 - z0 < 1e-4) return;
+  const c = windowColor(w);
+  faces.push({
+    points: [{ ...an.hinge, z: z0 }, { ...an.jamb, z: z0 }, { ...an.jamb, z: z1 }, { ...an.hinge, z: z1 }],
+    f, color: shade(c, 1), stroke: shade(c, .55), kind: 'window', id: wall.id, opacity, depthBias: .3
+  });
+}
+function drawPreviewGrid(f, b, defs) {
+  const o = project({ x: 0, y: 0 }, f), px = project({ x: 1, y: 0 }, f), py = project({ x: 0, y: 1 }, f), u = unit();
+  const group = el('g', { transform: 'matrix(' + [px.x - o.x, px.y - o.y, py.x - o.x, py.y - o.y, o.x, o.y].join(' ') + ')', 'pointer-events': 'none' });
+  el('rect', { x: b.x, y: b.y, width: b.w, height: b.h, fill: '#edf4ed', 'fill-opacity': .12, stroke: '#a9bfb0', 'stroke-width': .8 / u }, group);
+  if ($('grid').checked) {
+    const majorStep = Math.max(5, 5 ** Math.ceil(Math.log(8 / Math.max(.001, u)) / Math.log(5)));
+    for (const [id, step, color, width, opacity] of [['unit', 1, '#c6d5c8', .55, Math.min(1, u / 4)], ['major', majorStep, '#b5c7b9', .8, 1]]) {
+      const patternId = 'preview-grid-' + f + '-' + id;
+      const pattern = el('pattern', { id: patternId, width: step, height: step, patternUnits: 'userSpaceOnUse' }, defs);
+      el('path', { d: 'M' + step + ' 0 H0 V' + step, fill: 'none', stroke: color, 'stroke-width': width / u }, pattern);
+      el('rect', { x: b.x, y: b.y, width: b.w, height: b.h, fill: 'url(#' + patternId + ')', opacity }, group);
+    }
+  }
+  const label = project({ x: b.x, y: b.y }, f);
+  el('text', { x: label.x - 10, y: label.y - 12, fill: '#527e68', 'font-size': 13, 'font-weight': 600 }).textContent = f + 'F · 高度 ' + floorHeight(state, f);
+}
+function render3D() {
+  const grid = previewGridBounds(state), defs = el('defs');
+  for (const f of state.floors.filter(f => floorVisible(state, f))) drawPreviewGrid(f, grid, defs);
+  const op = state.opacity || { wall: .9, door: .85, slab: .5 };
+  const faces = [];
+  for (const l of state.layers) {
+    if (!layerVisible(state, l)) continue;
+    const s = shapeOfLayer(l.id); if (!s) continue;
+    if (s.type === 'wall') {
+      if (op.wall > .02) pushWallFaces(s, l.floor, faces, op.wall);
+      if (op.door > .02) for (const d of (s.doors || [])) pushDoorLeaf(s, d, l.floor, faces, op.door);
+      if (op.window > .02) for (const w of (s.windows || [])) pushWindowPane(s, w, l.floor, faces, op.window);
+      continue;
+    }
+    if (s.type === 'stairs' && s.points.length === 4) {
+      for (const face of stairMesh(s, state.gap, stairRise(state, s))) faces.push({ ...face, f: l.floor, color: shade(s.color, face.shade), stroke: shade(s.color, .55), id: s.id, opacity: 1, depthBias: 0 });
+      continue;
+    }
+    if (op.slab > .02) faces.push({ points: geometry(s), f: l.floor, color: s.color, stroke: s.color, id: s.id, opacity: op.slab, kind: 'plane', depthBias: 0 });
+  }
+  const depth = face => face.points.reduce((sum, p) => sum + (p.x * Math.sin(angle) + p.y * Math.cos(angle)) * Math.cos(tilt) + (floorHeight(state, face.f) + (p.z || 0)) * Math.sin(tilt), 0) / face.points.length + (face.depthBias || 0);
+  faces.sort((a, b) => depth(a) - depth(b));
+  for (const face of faces) {
+    const soft = ['wall-top', 'wall-side', 'door', 'window'].includes(face.kind);
+    el('polygon', {
+      points: ptsOf(face.points.map(p => projectAt(p, face.f))), fill: face.color, 'fill-opacity': face.opacity,
+      stroke: face.stroke, 'stroke-width': .7, 'stroke-linejoin': 'round', 'pointer-events': 'none',
+      'stroke-opacity': soft ? clamp(face.opacity + .1, 0, 1) : 1
+    });
+  }
+}
+function render() {
+  svg.replaceChildren();
+  for (const w of state.shapes) if (w.type === 'wall') syncOpenings(w);
+  if (view === '3') { render3D(); }
+  else {
+    if ($('grid').checked) drawGrid2D();
+    drawShapes2D();
+    drawOverlay();
+  }
+  updateChrome();
+}
+function updateChrome() {
+  $('empty').hidden = state.shapes.length > 0 || view === '3';
+  $('zoomLabel').textContent = Math.round(zoom * 100) + '%';
+  const oc = openingCounts(state);
+  $('stats').textContent = state.shapes.length + ' 个图形'
+    + (oc.doors ? ' · ' + oc.doors + ' 扇门' : '') + (oc.windows ? ' · ' + oc.windows + ' 扇窗' : '');
+  $('status').textContent = view === '3' ? '3D 空间预览' : floor + 'F · ' + (state.layers.find(l => l.id === activeLayer)?.name || '');
+  const touch = isCoarse();
+  $('hint').textContent = view === '3' ? (touch ? '单指拖动旋转视角 · 双指缩放 / 平移' : '拖动旋转视角 · 滚轮缩放 · 空格拖动平移')
+    : tool === 'wall' ? (touch ? '点击添加墙节点 · 点首点闭合 · 双击结束 · 点其他工具也可结束' : '点击添加墙节点 · 点首点闭合 · 双击或 Enter 结束 · Esc 取消')
+      : tool === 'door' ? '点击墙体添加门洞 · 拖动现有门可沿墙滑动'
+        : tool === 'window' ? '点击墙体添加窗洞 · 拖动现有窗可沿墙滑动'
+          : tool === 'vertex' ? '拖动顶点调整轮廓 · 点击 ＋ 增加顶点'
+            : tool === 'select' ? (touch
+              ? (state.snapMode === 'free' ? '自由拖动：不受网格约束 · 双指缩放 / 平移' : '网格吸附中 · 双指缩放 / 平移 · 长按拖动可再编辑')
+              : (state.snapMode === 'free' ? '自由拖动：不受网格约束 · Shift 临时吸附' : '网格吸附中 · Shift 临时自由 · Alt 拖动复制 · 空格平移'))
+              : '在画布上拖动绘制 · Esc 返回选择';
+}
+
+/* ---------- 楼层 / 图层 ---------- */
+function chooseFloor(f) { floor = f; selected = null; clearOpening(); activeLayer = null; panels(); properties(); render(); }
+function selectObject(s) { collapsedFloors.delete(layer(s).floor); selected = s.id; clearOpening(); activeLayer = s.layer; floor = layer(s).floor; panels(); properties(); render(); }
+function refresh() { panels(); properties(); render(); }
+function toggleFloorVisibility(f) {
+  checkpoint();
+  const hidden = new Set(state.hiddenFloors || []);
+  if (hidden.has(f)) hidden.delete(f); else hidden.add(f);
+  state.hiddenFloors = [...hidden]; drag = null; refresh();
+}
+function toggleLayerVisibility(l) { checkpoint(); l.visible = !l.visible; drag = null; refresh(); }
+function setFloorHeight(f, value) {
+  const h = Number(value);
+  if (String(value).trim() === '' || !Number.isFinite(h) || Math.abs(h) > 100000) { toast('请输入 -100000 至 100000 之间的高度'); return false; }
+  if (h === floorHeight(state, f)) return true;
+  checkpoint();
+  state.floorHeights = Object.fromEntries(state.floors.map(n => [n, floorHeight(state, n)]));
+  state.floorHeights[f] = h;
+  refresh(); return true;
+}
+function addFloor() {
+  if (state.floors.length >= MAX_FLOORS) { toast('楼层数量已达上限 ' + MAX_FLOORS); return; }
+  checkpoint();
+  const next = Math.max(...state.floors) + 1;
+  state.floorHeights = Object.fromEntries(state.floors.map(f => [f, floorHeight(state, f)]));
+  state.floorHeights[next] = floorHeight(state, Math.max(...state.floors)) + state.gap;
+  state.floors.push(next);
+  chooseFloor(next);
+  toast('已新增 ' + next + 'F');
+}
+function setFloorCount(n) {
+  n = clamp(Math.round(Number(n)) || 1, 1, MAX_FLOORS);
+  if (n === state.floors.length) { $('floorCount').value = n; return; }
+  checkpoint();
+  const heights = Object.fromEntries(state.floors.map(f => [f, floorHeight(state, f)]));
+  if (n > state.floors.length) {
+    for (let f = state.floors.length + 1; f <= n; f++) heights[f] = heights[f - 1] + state.gap;
+    state.floors = Array.from({ length: n }, (_, i) => i + 1);
+  } else {
+    state.floors = state.floors.filter(f => f <= n);
+    const keep = new Set(state.floors);
+    const drop = new Set(state.layers.filter(l => !keep.has(l.floor)).map(l => l.id));
+    state.layers = state.layers.filter(l => keep.has(l.floor));
+    state.shapes = state.shapes.filter(s => !drop.has(s.layer));
+    if (!keep.has(floor)) { floor = Math.max(...state.floors); selected = null; clearOpening(); activeLayer = null; }
+  }
+  state.hiddenFloors = (state.hiddenFloors || []).filter(f => f <= n);
+  state.floorHeights = heights;
+  panels(); properties(); render();
+  toast('楼层数量已设为 ' + n + ' 层');
+}
+function copyFloor(f) {
+  if (state.floors.length >= MAX_FLOORS) { toast('楼层数量已达上限 ' + MAX_FLOORS); return; }
+  checkpoint();
+  const next = Math.max(...state.floors) + 1;
+  state.floorHeights = Object.fromEntries(state.floors.map(x => [x, floorHeight(state, x)]));
+  state.floorHeights[next] = floorHeight(state, Math.max(...state.floors)) + state.gap;
+  state.floors.push(next);
+  for (const l of state.layers.filter(l => l.floor === f)) {
+    const src = shapeOfLayer(l.id); if (!src) continue;
+    const copy = clone(src); copy.id = uid('s'); copy.layer = 'l' + copy.id;
+    if (copy.type === 'wall') { reidOpenings(copy); copy.color = floorColor(next); }
+    state.layers.push({ ...clone(l), id: copy.layer, name: l.name, floor: next, visible: true, locked: false });
+    state.shapes.push(copy);
+  }
+  floor = next; selected = null; clearOpening(); activeLayer = null;
+  refresh(); toast('已把 ' + f + 'F 复制为 ' + next + 'F');
+}
+function eyeButton(visible, label, action, inherited = false) {
+  const btn = document.createElement('button');
+  btn.className = 'eye-button' + (visible ? '' : ' is-hidden') + (inherited ? ' inherited-hidden' : '');
+  btn.title = (visible ? '隐藏' : '显示') + label + (inherited ? '（所属楼层已隐藏）' : '');
+  btn.setAttribute('aria-label', btn.title); btn.setAttribute('aria-pressed', String(visible));
+  const icon = el('svg', { viewBox: '0 0 24 24', width: 19, height: 19, fill: 'none', stroke: 'currentColor', 'stroke-width': 1.7, 'stroke-linecap': 'round', 'stroke-linejoin': 'round', 'aria-hidden': 'true' }, btn);
+  el('path', { d: 'M2 12s3.5-7 10-7 10 7 10 7-3.5 7-10 7S2 12 2 12Z' }, icon);
+  el('circle', { cx: 12, cy: 12, r: 3 }, icon);
+  if (!visible) el('path', { d: 'm3 3 18 18' }, icon);
+  btn.onclick = e => { e.stopPropagation(); action(); };
+  return btn;
+}
+function panels() {
+  const tabs = $('floorTabs'); tabs.replaceChildren();
+  const prev = document.createElement('button'); prev.textContent = '‹'; prev.title = '上一楼层';
+  prev.onclick = () => { const i = state.floors.indexOf(floor); if (i > 0) chooseFloor(state.floors[i - 1]); };
+  const next = document.createElement('button'); next.textContent = '›'; next.title = '下一楼层';
+  next.onclick = () => { const i = state.floors.indexOf(floor); if (i < state.floors.length - 1) chooseFloor(state.floors[i + 1]); };
+  const selector = document.createElement('select'); selector.id = 'floorSelect'; selector.setAttribute('aria-label', '当前楼层');
+  for (const f of state.floors) { const o = document.createElement('option'); o.value = f; o.textContent = f + 'F'; selector.appendChild(o); }
+  selector.value = floor; selector.onchange = () => chooseFloor(+selector.value);
+  const count = document.createElement('span'); count.textContent = '共 ' + state.floors.length + ' 层';
+  tabs.append(prev, selector, next, count);
+
+  const list = $('layerList'); list.replaceChildren();
+  for (const f of [...state.floors].reverse()) {
+    const group = document.createElement('section');
+    group.className = 'floor-group' + (floorVisible(state, f) ? '' : ' floor-hidden');
+    const heading = document.createElement('div');
+    heading.className = 'floor-heading' + (f === floor ? ' current' : '');
+    const swatch = document.createElement('span');
+    swatch.className = 'floor-swatch'; swatch.style.background = floorColor(f);
+    swatch.title = f + 'F 的楼层配色 ' + floorColor(f);
+    heading.appendChild(swatch);
+    const choose = document.createElement('button'); choose.textContent = f + 'F · 楼层'; choose.onclick = () => chooseFloor(f);
+    heading.appendChild(choose);
+    const info = document.createElement('span');
+    const items = state.layers.filter(l => l.floor === f);
+    const counts = state.shapes.filter(s => s.type === 'wall' && items.some(l => l.id === s.layer))
+      .reduce((acc, s) => ({ doors: acc.doors + (s.doors || []).length, windows: acc.windows + (s.windows || []).length }), { doors: 0, windows: 0 });
+    info.textContent = items.length + ' 个体块'
+      + (counts.doors ? ' · ' + counts.doors + ' 门' : '') + (counts.windows ? ' · ' + counts.windows + ' 窗' : '');
+    heading.appendChild(info);
+    const heightLabel = document.createElement('label');
+    heightLabel.className = 'floor-height'; heightLabel.textContent = '高度';
+    const heightInput = document.createElement('input');
+    heightInput.type = 'number'; heightInput.step = 'any'; heightInput.value = floorHeight(state, f);
+    heightInput.setAttribute('aria-label', f + 'F 高度');
+    heightInput.title = '此楼层的绝对高度（单位），可输入小数或负数';
+    heightInput.onclick = e => e.stopPropagation();
+    heightInput.onchange = () => { if (!setFloorHeight(f, heightInput.value)) heightInput.value = floorHeight(state, f); };
+    heightInput.onkeydown = e => { if (e.key === 'Enter') { e.preventDefault(); heightInput.blur(); } };
+    heightLabel.appendChild(heightInput); heading.appendChild(heightLabel);
+    const dup = document.createElement('button'); dup.className = 'mini-button'; dup.textContent = '⧉';
+    dup.title = '复制此楼层到新楼层'; dup.setAttribute('aria-label', '复制 ' + f + 'F');
+    dup.onclick = e => { e.stopPropagation(); copyFloor(f); };
+    heading.appendChild(dup);
+    heading.appendChild(eyeButton(floorVisible(state, f), f + 'F 楼层', () => toggleFloorVisibility(f)));
+    const fold = document.createElement('button');
+    fold.className = 'floor-fold'; fold.textContent = collapsedFloors.has(f) ? '▸' : '▾';
+    fold.title = '展开 / 收起子图层';
+    fold.setAttribute('aria-expanded', String(!collapsedFloors.has(f)));
+    fold.onclick = () => { if (collapsedFloors.has(f)) collapsedFloors.delete(f); else collapsedFloors.add(f); panels(); };
+    heading.appendChild(fold);
+    group.appendChild(heading);
+    const children = document.createElement('div');
+    children.id = 'floor-children-' + f; children.hidden = collapsedFloors.has(f);
+    group.appendChild(children);
+    for (const l of [...items].reverse()) {
+      const obj = shapeOfLayer(l.id); if (!obj) continue;
+      const row = document.createElement('div');
+      row.className = 'layer' + (selected === obj.id ? ' active' : '');
+      row.dataset.layer = l.id;
+      row.setAttribute('aria-label', obj.name + ' 图层');
+      const icon = document.createElement('button');
+      icon.className = 'layer-icon'; icon.textContent = TYPE_ICON[obj.type] || '□'; icon.style.color = obj.color;
+      icon.title = '选择体块'; icon.onclick = () => selectObject(obj);
+      row.appendChild(icon);
+      const name = document.createElement('input');
+      name.value = obj.name; name.readOnly = true; name.disabled = l.locked;
+      name.setAttribute('aria-label', '体块图层名称');
+      name.title = '单击选择体块，双击重命名';
+      name.onclick = e => { e.stopPropagation(); if (!name.readOnly) return; selected = obj.id; clearOpening(); activeLayer = l.id; floor = f; panels(); properties(); render(); svg.focus({ preventScroll: true }); };
+      name.ondblclick = e => { e.stopPropagation(); if (l.locked) return; name.readOnly = false; name.focus(); name.select(); };
+      name.onblur = () => { name.readOnly = true; };
+      name.onkeydown = e => {
+        if (e.key === 'Enter') { e.stopPropagation(); name.blur(); svg.focus({ preventScroll: true }); }
+        if (e.key === 'Escape') { e.stopPropagation(); name.value = obj.name; name.blur(); svg.focus({ preventScroll: true }); }
+      };
+      name.onchange = () => { checkpoint(); obj.name = l.name = name.value || '未命名体块'; properties(); render(); };
+      row.appendChild(name);
+      if (obj.type === 'wall') {
+        const nd = (obj.doors || []).length, nw = (obj.windows || []).length;
+        const badge = document.createElement('span');
+        badge.className = 'door-badge';
+        badge.textContent = [nd ? nd + ' 门' : '', nw ? nw + ' 窗' : ''].filter(Boolean).join(' · ') || '无开口';
+        row.appendChild(badge);
+      }
+      row.appendChild(eyeButton(l.visible, obj.name + ' 图层', () => toggleLayerVisibility(l), !floorVisible(state, f)));
+      const lock = document.createElement('button');
+      lock.className = 'mini-button'; lock.textContent = l.locked ? '▣' : '♧';
+      lock.title = '锁定或解锁体块'; lock.setAttribute('aria-label', lock.title);
+      lock.onclick = e => { e.stopPropagation(); checkpoint(); l.locked = !l.locked; refresh(); };
+      row.appendChild(lock);
+      row.onclick = () => { selectObject(obj); svg.focus({ preventScroll: true }); };
+      children.appendChild(row);
+    }
+    if (!items.length) {
+      const empty = document.createElement('p');
+      empty.className = 'floor-empty'; empty.textContent = '此楼层暂无体块，选择后在画布绘制';
+      children.appendChild(empty);
+    }
+    list.appendChild(group);
+  }
+  const cur = shape();
+  const locked = !cur || !!layer(cur)?.locked;
+  $('layerUp').disabled = $('layerDown').disabled = $('deleteLayer').disabled = locked;
+  $('copyLayer').disabled = !cur;
+  $('floorCount').value = state.floors.length;
+  undoButtons();
+}
+function reorder(id, direction) {
+  const l = state.layers.find(x => x.id === id); if (!l || l.locked) return;
+  const siblings = state.layers.filter(x => x.floor === l.floor);
+  const i = siblings.indexOf(l), other = siblings[i + direction];
+  if (!other) return;
+  checkpoint();
+  const a = state.layers.indexOf(l), b = state.layers.indexOf(other);
+  [state.layers[a], state.layers[b]] = [state.layers[b], state.layers[a]];
+  refresh();
+}
+// 复制墙体时给门 / 窗换新 id，避免和原件共用标识
+function reidOpenings(wall) {
+  wall.doors = (wall.doors || []).map(d => ({ ...clone(d), id: uid('d') }));
+  wall.windows = (wall.windows || []).map(w => ({ ...clone(w), id: uid('w') }));
+}
+function copyObject(source, sourceLayer, { targetFloor = sourceLayer.floor, offset = { x: 0, y: 0 }, afterLayerId = sourceLayer.id } = {}) {
+  const copy = clone(source);
+  copy.id = uid('s'); copy.layer = 'l' + copy.id;
+  copy.name = source.name + ' 副本';
+  copy.points = copy.points.map(p => ({ x: p.x + offset.x, y: p.y + offset.y }));
+  if (copy.type === 'wall') { reidOpenings(copy); copy.color = floorColor(targetFloor); }
+  const newLayer = { ...clone(sourceLayer), id: copy.layer, name: copy.name, floor: targetFloor, visible: true, locked: false };
+  const after = state.layers.findIndex(l => l.id === afterLayerId);
+  state.layers.splice(after < 0 ? state.layers.length : after + 1, 0, newLayer);
+  state.shapes.push(copy);
+  return copy;
+}
+function duplicate() {
+  const source = shape(); if (!source) return;
+  checkpoint();
+  selectObject(copyObject(source, layer(source), { offset: { x: 1, y: 1 } }));
+  svg.focus({ preventScroll: true });
+}
+function pasteClipboard() {
+  if (!objectClipboard) return false;
+  if (!floorVisible(state, floor)) { toast('当前楼层已隐藏，请先显示该楼层再粘贴'); return true; }
+  checkpoint(); pasteCount++;
+  const copy = copyObject(objectClipboard.shape, objectClipboard.layer, { targetFloor: floor, offset: { x: pasteCount, y: pasteCount }, afterLayerId: activeLayer });
+  selectObject(copy); svg.focus({ preventScroll: true });
+  return true;
+}
+function moveToFloor(s, f) { layer(s).floor = f; floor = f; activeLayer = s.layer; if (s.type === 'wall') s.color = floorColor(f); }
+function removeShape(id) {
+  const s = state.shapes.find(x => x.id === id);
+  state.shapes = state.shapes.filter(x => x.id !== id);
+  state.layers = state.layers.filter(l => l.id !== (s ? s.layer : id));
+}
+function remove() {
+  const s = shape(); if (!s || layer(s).locked) return;
+  checkpoint(); removeShape(s.id);
+  selected = null; clearOpening(); activeLayer = null; refresh();
+}
+
+/* ---------- 属性面板 ---------- */
+function syncOpenings(wall) {
+  const n = wallSegments(wall).length;
+  for (const key of ['doors', 'windows']) {
+    if (!wall[key]) wall[key] = [];
+    for (const o of wall[key]) { o.seg = clamp(o.seg | 0, 0, Math.max(0, n - 1)); o.t = clamp(o.t, 0, 1); }
+  }
+}
+function selectOpening(kind, id) {
+  if (kind === 'window') { selectedWindow = id; selectedDoor = null; } else { selectedDoor = id; selectedWindow = null; }
+  properties(); render();
+}
+function renderOpeningList(kind) {
+  const s = shape(), box = $(kind === 'window' ? 'windowList' : 'doorList');
+  const list = s ? (s[OPEN_KEY[kind]] || []) : [];
+  const name = kind === 'window' ? '窗' : '门';
+  box.replaceChildren();
+  if (!s || s.type !== 'wall' || !list.length) {
+    const p = document.createElement('p');
+    p.className = 'muted intro'; p.textContent = '这面墙还没有' + name + '洞。';
+    box.appendChild(p); return;
+  }
+  list.forEach((o, i) => {
+    const row = document.createElement('div');
+    const activeId = kind === 'window' ? selectedWindow : selectedDoor;
+    row.className = 'door-row' + (activeId === o.id ? ' active' : '');
+    const label = document.createElement('button');
+    label.className = 'door-label';
+    label.textContent = `${name} ${i + 1} · 第 ${o.seg + 1} 段 · ${Math.round(o.t * 100)}% · 宽 ${(+o.width).toFixed(2)}`;
+    label.onclick = () => { selectOpening(kind, o.id); properties(); render(); };
+    const del = document.createElement('button');
+    del.className = 'mini-button'; del.textContent = '×'; del.title = '删除这扇' + name;
+    del.onclick = e => {
+      e.stopPropagation(); checkpoint();
+      s[OPEN_KEY[kind]] = (s[OPEN_KEY[kind]] || []).filter(x => x.id !== o.id);
+      if (kind === 'window') { if (selectedWindow === o.id) selectedWindow = null; }
+      else if (selectedDoor === o.id) selectedDoor = null;
+      refresh();
+    };
+    row.append(label, del);
+    box.appendChild(row);
+  });
+}
+function properties() {
+  const s = shape();
+  const open = currentOpening();
+  const door = open && open.kind === 'door' ? open.obj : null;
+  const win = open && open.kind === 'window' ? open.obj : null;
+  $('shapeProperties').hidden = !s;
+  $('noSelection').hidden = !!s;
+  $('shapeTag').textContent = s ? (door ? '门洞' : win ? '窗洞' : (TYPE_LABEL[s.type] || s.type)) : '未选择';
+  if (!s) { $('doorProperties').hidden = $('windowProperties').hidden = $('wallProperties').hidden = true; return; }
+  $('shapeName').value = s.name;
+  $('shapeColor').value = s.color;
+  $('colorValue').textContent = String(s.color).toUpperCase();
+  const sel = $('shapeLayer'); sel.replaceChildren();
+  for (const f of state.floors) { const o = document.createElement('option'); o.value = f; o.textContent = f + 'F'; sel.appendChild(o); }
+  sel.value = layer(s).floor;
+  const b = s.type === 'stairs' ? stairDimensions(s) : bounds(s.points);
+  $('shapeWidth').value = +b.w.toFixed(2);
+  $('shapeHeight').value = +b.h.toFixed(2);
+  $('rotation').value = s.rotation || 0;
+  $('stairsProperties').hidden = s.type !== 'stairs';
+  $('wallProperties').hidden = s.type !== 'wall';
+  const canVertex = s.type === 'rect' || s.type === 'wall';
+  $('editVertices').hidden = !canVertex;
+  $('vertexHelp').hidden = !canVertex;
+  if (s.type === 'stairs') {
+    $('stairSteps').value = s.stairSteps || 12;
+    $('stairFloors').value = s.stairFloors || 1;
+    $('stairReverse').value = s.stairReverse ? 'reverse' : 'forward';
+    $('stairsConnection').textContent = layer(s).floor + 'F → ' + (layer(s).floor + (s.stairFloors || 1)) + 'F · 高度差 ' + Number(stairRise(state, s).toFixed(4)) + ' 单位';
+  }
+  if (s.type === 'wall') {
+    $('wallThickness').value = s.thickness || .24;
+    $('wallHeight').value = s.height || 3;
+    $('wallClosed').checked = !!s.closed;
+    const segs = wallSegments(s);
+    $('wallSummary').textContent = `总长 ${wallLength(s).toFixed(2)} 单位 · ${s.points.length} 个节点 · ${segs.length} 段 · ${(s.doors || []).length} 门 ${(s.windows || []).length} 窗`;
+    renderOpeningList('door');
+    renderOpeningList('window');
+  }
+  $('doorProperties').hidden = !door;
+  $('windowProperties').hidden = !win;
+  if (win) {
+    const H = s.height || 3;
+    $('windowName').value = win.name || ('窗 ' + ((s.windows || []).indexOf(win) + 1));
+    $('windowT').value = +win.t.toFixed(3);
+    $('windowWidth').value = +win.width.toFixed(2);
+    $('windowHeight').value = +win.height.toFixed(2);
+    $('windowSill').value = +(win.sill || 0).toFixed(2);
+    $('windowColor').value = windowColor(win);
+    $('windowColorValue').textContent = windowColor(win).toUpperCase();
+    $('windowNote').textContent = `开口位于 ${(+(win.sill || 0)).toFixed(2)} – ${(+((win.sill || 0) + win.height)).toFixed(2)} 单位高度（墙高 ${H}）`;
+  }
+  if (door) {
+    $('doorName').value = door.name || ('门 ' + ((s.doors || []).indexOf(door) + 1));
+    $('doorT').value = +door.t.toFixed(3);
+    $('doorWidth').value = +door.width.toFixed(2);
+    $('doorHeight').value = +door.height.toFixed(2);
+    $('doorFlip').value = door.flip === -1 ? '-1' : '1';
+    $('doorOpen').value = door.open ? 'open' : 'closed';
+    $('doorColor').value = doorColor(door);
+    $('doorColorValue').textContent = doorColor(door).toUpperCase();
+  }
+  const locked = layer(s).locked;
+  for (const n of $('shapeProperties').querySelectorAll('input,select,button')) n.disabled = locked;
+}
+function panel(p) {
+  $('layersPanel').hidden = p !== 'layers';
+  $('propertiesPanel').hidden = p !== 'properties';
+  document.querySelectorAll('[data-panel]').forEach(n => n.classList.toggle('active', n.dataset.panel === p));
+  properties();
+}
+function mutate(fn) {
+  const s = shape(); if (!s || layer(s).locked) return;
+  checkpoint(); fn(s); panels(); properties(); render();
+}
+function mutateOpening(kind, fn) {
+  const s = shape(); if (!s) return;
+  const id = kind === 'window' ? selectedWindow : selectedDoor;
+  const obj = (s[OPEN_KEY[kind]] || []).find(o => o.id === id);
+  if (!obj) return;
+  checkpoint(); fn(obj, s); panels(); properties(); render();
+}
+
+/* ---------- 工具与视图 ---------- */
+function setTool(t) {
+  if (view === '3') setView('2');
+  if (wallDraft && t !== 'wall') finishWall(true);
+  tool = t;
+  document.querySelectorAll('[data-tool]').forEach(n => n.classList.toggle('active', n.dataset.tool === t));
+  svg.style.cursor = t === 'pan' ? 'grab' : t === 'select' ? 'default' : 'crosshair';
+  render();
+}
+function setView(v) {
+  const changed = v !== view;
+  if (changed) { view = v; pan = { x: 0, y: 0 }; zoom = 1; if (v === '3') fit3D(); }
+  $('view2').classList.toggle('active', v === '2');
+  $('view3').classList.toggle('active', v === '3');
+  render();
+  if (changed && v === '3') {   // 进 3D 时把不透明度滑块带到眼前
+    panel('layers');
+    const box = document.querySelector('#layersPanel .panel-sub:last-of-type');
+    if (box) box.scrollIntoView({ block: 'nearest' });
+  }
+}
+function fit3D() {
+  pan = { x: 0, y: 0 }; zoom = 1;
+  const gridBounds = previewGridBounds(state);
+  const points = [];
+  for (const f of state.floors.filter(f => floorVisible(state, f))) {
+    for (const p of [{ x: gridBounds.x, y: gridBounds.y }, { x: gridBounds.x + gridBounds.w, y: gridBounds.y }, { x: gridBounds.x + gridBounds.w, y: gridBounds.y + gridBounds.h }, { x: gridBounds.x, y: gridBounds.y + gridBounds.h }]) points.push(project(p, f));
+  }
+  for (const s of state.shapes) {
+    const l = layer(s); if (!l || !layerVisible(state, l)) continue;
+    points.push(...geometry(s).map(p => project(p, l.floor)));
+    if (s.type === 'wall') {
+      for (const seg of wallSegments(s)) {
+        for (const sp of wallSpans(s, seg.index)) {
+          points.push(projectAt(segPoint(seg, sp.t0), l.floor));
+          points.push({ x: projectAt(segPoint(seg, sp.t1), l.floor).x, y: projectAt(segPoint(seg, sp.t1), l.floor).y - (s.height || 3) * unit() * Math.cos(tilt) });
+        }
+      }
+    }
+    if (s.type === 'stairs') points.push(...stairMesh(s, state.gap, stairRise(state, s)).flatMap(face => face.points.map(p => projectAt(p, l.floor))));
+  }
+  if (!points.length) { zoom = 1; return; }
+  const b = bounds(points);
+  zoom = Math.max(.005, Math.min(1.2, (svg.clientWidth - 90) / Math.max(1, b.w), (svg.clientHeight - 160) / Math.max(1, b.h)));
+  pan = { x: (svg.clientWidth / 2 - (b.x + b.w / 2)) * zoom, y: (svg.clientHeight / 2 - (b.y + b.h / 2)) * zoom + 25 };
+}
+
+/* ---------- 交互 ---------- */
+function newShape(type, floorNum, points) {
+  const id = uid('s'), layerId = 'l' + id;
+  const name = TYPE_NAME[type] || '图形';
+  state.layers.push({ id: layerId, name, floor: floorNum, visible: true, locked: false });
+  const s = {
+    id, type, layer: layerId, name, points,
+    color: floorColor(floorNum),   // 墙体也跟随所在楼层配色
+    rotation: 0
+  };
+  if (type === 'stairs') Object.assign(s, { stairSteps: 12, stairFloors: 1, stairReverse: false });
+  if (type === 'wall') Object.assign(s, { thickness: .24, height: state.wallHeight || 3, closed: false, doors: [], windows: [] });
+  state.shapes.push(s);
+  return s;
+}
+function wallPointerDown(p, e) {
+  const q = quantP(p, e.shiftKey);
+  if (wallDraft) {
+    const w = state.shapes.find(x => x.id === wallDraft);
+    if (w) {
+      if (w.points.length >= 3 && dist(q, w.points[0]) < .45) {
+        checkpoint();
+        if (dist(w.points[w.points.length - 1], w.points[0]) < .45) w.points.pop(); // 丢掉跟随光标的橡皮筋点
+        w.closed = true;
+        finishWall(); toast('墙体已闭合'); return;
+      }
+      const last = w.points[w.points.length - 1];
+      if (dist(q, last) < .06) { finishWall(); return; }
+      checkpoint();
+      w.points.push({ x: q.x, y: q.y });
+      drag = { kind: 'wallDraw', id: w.id };
+      render(); return;
+    }
+    wallDraft = null;
+  }
+  checkpoint();
+  const w = newShape('wall', floor, [{ x: q.x, y: q.y }, { x: q.x, y: q.y }]);
+  wallDraft = w.id; selected = w.id; clearOpening(); activeLayer = w.layer;
+  drag = { kind: 'wallDraw', id: w.id };
+  panels(); properties(); render();
+}
+function finishWall(silent) {
+  const id = wallDraft; wallDraft = null;
+  const w = id ? state.shapes.find(x => x.id === id) : null;
+  if (w) {
+    w.points = w.points.filter((p, i) => i === 0 || dist(p, w.points[i - 1]) > 1e-6); // 去掉重复节点
+    if (w.points.length < 2 || wallLength(w) < .02) removeShape(w.id);
+    else { selected = w.id; clearOpening(); activeLayer = w.layer; }
+  }
+  drag = null;
+  if (!silent) toast(wallLength(w || { points: [] }) > 0 ? '墙体完成 · 可继续绘制，按 Esc 返回选择' : '墙体已取消');
+  panels(); properties(); render();
+}
+function makeOpening(kind, wall, seg, t, segLen) {
+  const H = wall.height || 3;
+  if (kind === 'window') return {
+    id: uid('w'), seg, t, width: Math.min(1.6, Math.max(.5, segLen * .35)),
+    height: Math.min(1.4, Math.max(.2, H * .45)), sill: Math.min(.9, Math.max(.1, H * .3)), color: WINDOW_COLOR
+  };
+  return {
+    id: uid('d'), seg, t, width: Math.min(1.2, Math.max(.5, segLen * .35)),
+    height: Math.min(2.2, H), sill: 0, flip: 1, open: false, color: DOOR_COLOR
+  };
+}
+function placeOpening(kind, p) {
+  const name = kind === 'window' ? '窗' : '门';
+  let best = null;
+  for (const w of state.shapes) {
+    if (w.type !== 'wall') continue;
+    const l = layer(w); if (!l || l.floor !== floor || !layerVisible(state, l) || l.locked) continue;
+    const hit = nearestOnWall(w, p); if (!hit) continue;
+    const threshold = Math.max(.5, (w.thickness || .24) * 1.8);
+    if (hit.d <= threshold && (!best || hit.d < best.hit.d)) best = { wall: w, hit };
+  }
+  if (!best) { toast(name + '要开在墙上：把光标移到当前楼层的墙体上再点击'); return; }
+  checkpoint();
+  const wall = best.wall;
+  const item = makeOpening(kind, wall, best.hit.seg, best.hit.t, best.hit.len);
+  openingList(wall, kind).push(item);
+  selected = wall.id; selectOpening(kind, item.id); activeLayer = wall.layer;
+  panel('properties'); setTool('select'); panels(); properties(); render();
+  toast('已加一扇' + name + ' · 拖动可沿墙滑动');
+}
+function addOpeningToWall(kind) {
+  const s = shape(); if (!s || s.type !== 'wall') return;
+  const name = kind === 'window' ? '窗' : '门';
+  const segs = wallSegments(s); if (!segs.length) { toast('墙体太短，先画长一点'); return; }
+  let idx = 0, bestLen = -1;
+  segs.forEach((seg, i) => { const len = dist(seg.a, seg.b); if (len > bestLen) { bestLen = len; idx = i; } });
+  checkpoint();
+  const item = makeOpening(kind, s, idx, .5, bestLen);
+  openingList(s, kind).push(item);
+  selectOpening(kind, item.id);
+  refresh(); toast('已添加' + name + '洞');
+}
+function beginMove(s) { checkpoint(); drag.moved = true; drag.start = clone(s); }
+
+svg.addEventListener('pointerdown', e => {
+  if (e.button !== 0 && e.button !== 1) return;
+  svg.focus({ preventScroll: true });
+  svg.setPointerCapture(e.pointerId);
+  touchPointers.set(e.pointerId, localOf(e.clientX, e.clientY));
+  if (touchPointers.size === 2) { endDrag(); startGesture(); return; }  // 第二根手指落下 → 转缩放/平移
+  if (touchPointers.size > 2) return;
+  const p = world(e);
+  if (space || e.button === 1 || tool === 'pan') { drag = { kind: 'pan', x: e.clientX, y: e.clientY, pan: { ...pan } }; return; }
+  if (view === '3') { drag = { kind: 'orbit', x: e.clientX, y: e.clientY, angle, tilt }; return; }
+  const target = e.target, s = shape();
+  const data = target.dataset || {};
+  const openKind = data.window ? 'window' : data.door ? 'door' : null;
+  const openId = data.window || data.door || null;
+  if (openKind) {
+    const wall = state.shapes.find(w => (w[OPEN_KEY[openKind]] || []).some(o => o.id === openId));
+    if (wall && !layer(wall).locked && tool !== 'door' && tool !== 'window') {
+      selected = wall.id; selectOpening(openKind, openId); activeLayer = wall.layer;
+      checkpoint(); drag = { kind: 'openingMove', wallId: wall.id, kind2: openKind, openId };
+      panels(); properties(); render(); return;
+    }
+  }
+  if (target.hasAttribute('data-rotate') && s) {
+    checkpoint(); const c = rotationCenter(s);
+    drag = { kind: 'rotate', start: clone(s), center: c, angle: Math.atan2(p.y - c.y, p.x - c.x) }; return;
+  }
+  if (target.hasAttribute('data-mid') && s) {
+    checkpoint(); const i = +target.dataset.mid;
+    const a = s.points[i], b = s.points[(i + 1) % s.points.length];
+    s.points.splice(i + 1, 0, { x: (a.x + b.x) / 2, y: (a.y + b.y) / 2 });
+    drag = { kind: 'vertex', index: i + 1 }; render(); return;
+  }
+  if (target.hasAttribute('data-vertex') && s) { checkpoint(); drag = { kind: 'vertex', index: +target.dataset.vertex }; return; }
+  if (target.hasAttribute('data-resize') && s) { checkpoint(); drag = { kind: 'resize', index: +target.dataset.resize, start: clone(s), box: bounds(s.points) }; return; }
+  if (tool === 'select' || tool === 'vertex') {
+    const id = target.dataset ? target.dataset.shape : null;
+    selected = id || null; clearOpening();
+    if (id) {
+      const sh = shape(); activeLayer = sh.layer;
+      if (e.altKey && !layer(sh).locked) {
+        checkpoint();
+        const copy = copyObject(sh, layer(sh), {});
+        selected = copy.id; activeLayer = copy.layer; clearOpening();
+        drag = { kind: 'move', start: clone(copy), p, moved: true };
+      } else if (!layer(sh).locked) {
+        drag = { kind: 'move', start: clone(sh), p, moved: false };
+      }
+    }
+    panels(); properties(); render(); return;
+  }
+  if (tool === 'door') { placeOpening('door', p); return; }
+  if (tool === 'window') { placeOpening('window', p); return; }
+  if (tool === 'wall') { wallPointerDown(p, e); return; }
+  if (!floorVisible(state, floor)) { toast('当前楼层已隐藏，请点击楼层旁的小眼睛显示后再绘制'); return; }
+  checkpoint();
+  collapsedFloors.delete(floor);
+  const q = quantP(p, e.shiftKey);
+  const sh = newShape(tool, floor, [q, { x: q.x + .01, y: q.y + .01 }]);
+  selected = sh.id; clearOpening(); activeLayer = sh.layer;
+  drag = { kind: 'draw', p: q };
+  render();
+});
+svg.addEventListener('pointermove', e => {
+  if (touchPointers.has(e.pointerId)) touchPointers.set(e.pointerId, localOf(e.clientX, e.clientY));
+  if (gesture) { if (touchPointers.size >= 2) updateGesture(); return; }
+  if (!drag) return;
+  const p = world(e), s = shape(), shift = e.shiftKey;
+  if (drag.kind === 'pan') { pan = { x: drag.pan.x + e.clientX - drag.x, y: drag.pan.y + e.clientY - drag.y }; render(); return; }
+  if (drag.kind === 'orbit') { angle = drag.angle + (e.clientX - drag.x) * .008; tilt = clamp(drag.tilt + (e.clientY - drag.y) * .006, .15, 1.35); render(); return; }
+  if (drag.kind === 'wallDraw') {
+    const w = state.shapes.find(x => x.id === drag.id);
+    if (w) { w.points[w.points.length - 1] = quantP(p, shift); render(); }
+    return;
+  }
+  if (drag.kind === 'openingMove') {
+    const wall = state.shapes.find(w => w.id === drag.wallId);
+    const item = wall && (wall[OPEN_KEY[drag.kind2]] || []).find(o => o.id === drag.openId);
+    if (wall && item) {
+      const hit = nearestOnWall(wall, p);
+      if (hit) { item.seg = hit.seg; item.t = hit.t; }
+      properties(); render();
+    }
+    return;
+  }
+  if (!s) return;
+  if (!drag.moved && (drag.kind === 'move' || drag.kind === 'resize' || drag.kind === 'vertex' || drag.kind === 'rotate')) beginMove(s);
+  if (drag.kind === 'rotate') {
+    let delta = Math.atan2(p.y - drag.center.y, p.x - drag.center.x) - drag.angle;
+    delta = Math.atan2(Math.sin(delta), Math.cos(delta));
+    s.points = clone(drag.start.points); s.rotation = drag.start.rotation || 0;
+    rotateShapeTo(s, s.rotation + delta * 180 / Math.PI);
+    if (s.type === 'wall') syncOpenings(s);
+    $('rotation').value = s.rotation;
+  }
+  if (drag.kind === 'move') {
+    const anchor = drag.start.points[0];
+    const raw = { x: anchor.x + (p.x - drag.p.x), y: anchor.y + (p.y - drag.p.y) };
+    const q = quantP(raw, shift);
+    const delta = { x: q.x - anchor.x, y: q.y - anchor.y };
+    s.points = drag.start.points.map(pt => ({ x: pt.x + delta.x, y: pt.y + delta.y }));
+  }
+  if (drag.kind === 'vertex') { s.points[drag.index] = quantP(p, shift); if (s.type === 'wall') syncOpenings(s); }
+  if (drag.kind === 'resize') {
+    if (s.type === 'stairs') { resizeStair(s, drag.start, quantP(p, shift), drag.index); render(); return; }
+    const b = drag.box, q = quantP(p, shift);
+    const op = [{ x: b.x + b.w, y: b.y + b.h }, { x: b.x, y: b.y + b.h }, { x: b.x, y: b.y }, { x: b.x + b.w, y: b.y }][drag.index];
+    let w = Math.max(.1, Math.abs(q.x - op.x)), h = Math.max(.1, Math.abs(q.y - op.y));
+    if (s.type === 'circle') w = h = Math.max(w, h);
+    const x = q.x < op.x ? op.x - w : op.x, y = q.y < op.y ? op.y - h : op.y;
+    s.points = drag.start.points.map(a => ({ x: x + (a.x - b.x) / Math.max(.01, b.w) * w, y: y + (a.y - b.y) / Math.max(.01, b.h) * h }));
+  }
+  if (drag.kind === 'draw') {
+    const q = quantP(p, shift), a = drag.p;
+    const x = Math.min(a.x, q.x), y = Math.min(a.y, q.y);
+    const w = Math.max(.05, Math.abs(q.x - a.x)), h = Math.max(.05, Math.abs(q.y - a.y));
+    if (s.type === 'rect' || s.type === 'stairs') s.points = [{ x, y }, { x: x + w, y }, { x: x + w, y: y + h }, { x, y: y + h }];
+    if (s.type === 'circle') { const d = Math.max(w, h); s.points = [a, { x: a.x + (q.x < a.x ? -d : d), y: a.y + (q.y < a.y ? -d : d) }]; }
+    if (s.type === 'arrow') {
+      const dx = q.x - a.x, dy = q.y - a.y, len = Math.max(.1, Math.hypot(dx, dy)), ux = dx / len, uy = dy / len;
+      const head = Math.min(1.2, len * .4), th = .22;
+      const trans = (u, v) => ({ x: a.x + u * ux - v * uy, y: a.y + u * uy + v * ux });
+      s.points = [trans(0, -th), trans(len - head, -th), trans(len - head, -.65), trans(len, 0), trans(len - head, .65), trans(len - head, th), trans(0, th)];
+    }
+  }
+  render();
+});
+function endDrag() {
+  if (!drag) return;
+  if (drag.kind === 'draw') {
+    const s = shape();
+    if (s) {
+      const b = bounds(s.points);
+      if (b.w < .1 || b.h < .1 || s.points.length < 3) {
+        const a = drag.p;
+        s.points = s.type === 'arrow'
+          ? [{ x: a.x, y: a.y - .2 }, { x: a.x + 2, y: a.y - .2 }, { x: a.x + 2, y: a.y - .7 }, { x: a.x + 3, y: a.y }, { x: a.x + 2, y: a.y + .7 }, { x: a.x + 2, y: a.y + .2 }, { x: a.x, y: a.y + .2 }]
+          : [{ ...a }, { x: a.x + 3, y: a.y }, { x: a.x + 3, y: a.y + 3 }, { x: a.x, y: a.y + 3 }];
+        if (s.type === 'circle') s.points = [a, { x: a.x + 3, y: a.y + 3 }];
+      }
+      if (s.type === 'stairs') { const b2 = stairDimensions(s); if (b2.w < .1) s.points = [{ ...drag.p }, { x: drag.p.x + 3, y: drag.p.y }, { x: drag.p.x + 3, y: drag.p.y + 6 }, { x: drag.p.x, y: drag.p.y + 6 }]; }
+      setTool('select'); panels();
+      if (s.type === 'stairs') panel('properties');
+    }
+  }
+  if (drag.kind === 'wallDraw') {
+    const w = state.shapes.find(x => x.id === drag.id);
+    if (w && w.points.length > 2 && dist(w.points[w.points.length - 1], w.points[w.points.length - 2]) < 1e-6) w.points.pop();
+  }
+  drag = null; properties(); render();
+}
+function endPointer(e) {
+  touchPointers.delete(e.pointerId);
+  if (touchPointers.size < 2) gesture = null;
+  endDrag();
+}
+svg.addEventListener('pointerup', endPointer);
+svg.addEventListener('pointercancel', endPointer);
+svg.addEventListener('pointerleave', e => { touchPointers.delete(e.pointerId); if (touchPointers.size < 2) gesture = null; });
+svg.addEventListener('dblclick', () => { if (tool === 'wall' && wallDraft) finishWall(); });
+svg.addEventListener('wheel', e => { e.preventDefault(); zoom = clamp(zoom * Math.exp(-e.deltaY * .001), .005, 3); render(); }, { passive: false });
+
+/* ---------- 面板与按钮 ---------- */
+document.querySelectorAll('[data-tool]').forEach(n => n.onclick = () => setTool(n.dataset.tool));
+document.querySelectorAll('[data-panel]').forEach(n => n.onclick = () => panel(n.dataset.panel));
+$('view2').onclick = () => setView('2');
+$('view3').onclick = $('previewLink').onclick = () => setView('3');
+$('zoomIn').onclick = () => { zoom = clamp(zoom * 1.2, .005, 3); render(); };
+$('zoomOut').onclick = () => { zoom = clamp(zoom / 1.2, .005, 3); render(); };
+$('fit').onclick = () => {
+  if (view === '3') { fit3D(); render(); return; }
+  pan = { x: 0, y: 0 }; zoom = 1;
+  const points = state.shapes.filter(s => layer(s)?.floor === floor && layerVisible(state, layer(s))).flatMap(s => s.points);
+  if (points.length) {
+    const b = bounds(points);
+    zoom = clamp(Math.min(1.5, (svg.clientWidth - 120) / (40 * Math.max(5, b.w)), (svg.clientHeight - 180) / (40 * Math.max(5, b.h))), .2, 1.5);
+    pan = { x: -(b.x + b.w / 2) * 40 * zoom, y: -(b.y + b.h / 2) * 40 * zoom };
+  }
+  render();
+};
+$('addFloor').onclick = addFloor;
+$('layerUp').onclick = () => shape() && reorder(shape().layer, 1);
+$('layerDown').onclick = () => shape() && reorder(shape().layer, -1);
+$('copyLayer').onclick = duplicate;
+$('deleteLayer').onclick = remove;
+$('addDoor').onclick = () => addOpeningToWall('door');
+$('addWindow').onclick = () => addOpeningToWall('window');
+$('editVertices').onclick = () => setTool('vertex');
+for (const id of ['grid', 'ghost']) $(id).onchange = render;
+
+$('snapGrid').onclick = $('modeGrid').onclick = () => setSnapMode('grid');
+$('snapFree').onclick = $('modeFree').onclick = () => setSnapMode('free');
+$('snapStep').onchange = () => { state.snapStep = +$('snapStep').value || 1; render(); };
+for (const [key, id] of [['wall', 'wallOpacity'], ['door', 'doorOpacity'], ['window', 'windowOpacity'], ['slab', 'slabOpacity']]) {
+  $(id).addEventListener('input', () => {
+    state.opacity = state.opacity || defaultState().opacity;
+    state.opacity[key] = +$(id).value / 100;
+    $(id + 'Value').textContent = Math.round(state.opacity[key] * 100) + '%';
+    render();
+  });
+}
+$('recolorWalls').onclick = () => {
+  const walls = state.shapes.filter(s => s.type === 'wall');
+  if (!walls.length) { toast('还没有墙体'); return; }
+  checkpoint();
+  let changed = 0;
+  for (const w of walls) {
+    const l = layer(w); if (!l) continue;
+    const c = floorColor(l.floor);
+    if (w.color !== c) { w.color = c; changed++; }
+  }
+  refresh(); toast(changed ? '已把 ' + changed + ' 面墙体刷成楼层配色' : '所有墙体已经是楼层配色');
+};
+$('floorCount').onchange = () => setFloorCount($('floorCount').value);
+$('gapInput').onchange = () => {
+  const g = clamp(+$('gapInput').value || 4, .5, 30);
+  checkpoint(); state.gap = g;
+  state.floorHeights = Object.fromEntries(state.floors.map((f, i) => [f, i * g]));
+  $('gapInput').value = g; refresh(); toast('层高已设为 ' + g + '，各层高度重新排布');
+};
+$('wallHeightInput').onchange = () => {
+  state.wallHeight = clamp(+$('wallHeightInput').value || 3, .1, 100);
+  $('wallHeightInput').value = state.wallHeight;
+  toast('新建墙体的默认高度已设为 ' + state.wallHeight);
+};
+
+$('shapeName').onchange = () => mutate(s => { s.name = layer(s).name = $('shapeName').value || '未命名体块'; });
+$('shapeColor').onchange = () => mutate(s => s.color = $('shapeColor').value);
+$('shapeLayer').onchange = () => { mutate(s => moveToFloor(s, +$('shapeLayer').value)); panels(); };
+for (const axis of ['Width', 'Height']) {
+  $('shape' + axis).onchange = () => mutate(s => {
+    const b = bounds(s.points), v = clamp(+$('shape' + axis).value || 1, .1, 10000);
+    if (s.type === 'stairs') { sizeStair(s, axis, v); return; }
+    s.points = s.points.map(p => ({
+      x: axis === 'Width' || s.type === 'circle' ? b.x + (p.x - b.x) * v / Math.max(.01, b.w) : p.x,
+      y: axis === 'Height' || s.type === 'circle' ? b.y + (p.y - b.y) * v / Math.max(.01, b.h) : p.y
+    }));
+  });
+}
+$('rotation').onchange = () => mutate(s => { rotateShapeTo(s, $('rotation').value); if (s.type === 'wall') syncOpenings(s); });
+$('rotateLeft').onclick = () => mutate(s => rotateShapeTo(s, (s.rotation || 0) - 15));
+$('rotateRight').onclick = () => mutate(s => rotateShapeTo(s, (s.rotation || 0) + 15));
+$('stairSteps').onchange = () => mutate(s => s.stairSteps = clamp(Math.round(+$('stairSteps').value) || 12, 2, 64));
+$('stairFloors').onchange = () => mutate(s => s.stairFloors = clamp(Math.round(+$('stairFloors').value) || 1, 1, 100));
+$('stairReverse').onchange = () => mutate(s => s.stairReverse = $('stairReverse').value === 'reverse');
+$('wallThickness').onchange = () => mutate(s => s.thickness = clamp(+$('wallThickness').value || .24, .02, 10));
+$('wallHeight').onchange = () => mutate(s => s.height = clamp(+$('wallHeight').value || 3, .1, 100));
+$('wallClosed').onchange = () => mutate(s => { s.closed = $('wallClosed').checked; syncOpenings(s); });
+$('doorName').onchange = () => mutateOpening('door', d => d.name = $('doorName').value || '门');
+$('doorT').onchange = () => mutateOpening('door', d => d.t = clamp(+$('doorT').value || 0, 0, 1));
+$('doorWidth').onchange = () => mutateOpening('door', d => d.width = clamp(+$('doorWidth').value || 1, .1, 50));
+$('doorHeight').onchange = () => mutateOpening('door', d => d.height = clamp(+$('doorHeight').value || 2.1, .1, 50));
+$('doorFlip').onchange = () => mutateOpening('door', d => d.flip = $('doorFlip').value === '-1' ? -1 : 1);
+$('doorOpen').onchange = () => mutateOpening('door', d => d.open = $('doorOpen').value === 'open');
+$('doorColor').onchange = () => mutateOpening('door', d => d.color = $('doorColor').value);
+$('windowName').onchange = () => mutateOpening('window', w => w.name = $('windowName').value || '窗');
+$('windowT').onchange = () => mutateOpening('window', w => w.t = clamp(+$('windowT').value || 0, 0, 1));
+$('windowWidth').onchange = () => mutateOpening('window', w => w.width = clamp(+$('windowWidth').value || 1, .1, 50));
+$('windowHeight').onchange = () => mutateOpening('window', w => w.height = clamp(+$('windowHeight').value || 1.4, .1, 50));
+$('windowSill').onchange = () => mutateOpening('window', w => w.sill = clamp(+$('windowSill').value || 0, 0, 50));
+$('windowColor').onchange = () => mutateOpening('window', w => w.color = $('windowColor').value);
+for (const [kind, btn, key] of [['door', 'deleteDoor', 'doors'], ['window', 'deleteWindow', 'windows']]) {
+  $(btn).onclick = () => {
+    const s = shape(); const id = kind === 'window' ? selectedWindow : selectedDoor;
+    if (!s || !id) return;
+    checkpoint();
+    s[key] = (s[key] || []).filter(o => o.id !== id);
+    if (kind === 'window') selectedWindow = null; else selectedDoor = null;
+    refresh();
+  };
+}
+$('deleteShape').onclick = remove;
+for (const color of PALETTE) {
+  const n = document.createElement('button');
+  n.style.background = color; n.title = color; n.setAttribute('aria-label', '颜色 ' + color);
+  n.onclick = () => mutate(s => s.color = color);
+  $('swatches').appendChild(n);
+}
+
+function undo(redo = false) {
+  const from = redo ? future : history, to = redo ? history : future;
+  if (!from.length) return;
+  to.push(clone(state)); state = from.pop();
+  selected = null; clearOpening(); activeLayer = null; wallDraft = null;
+  if (!state.floors.includes(floor)) floor = state.floors[0];
+  $('projectName').value = state.name;
+  syncSettings(); panels(); properties(); render();
+}
+$('undo').onclick = () => undo();
+$('redo').onclick = () => undo(true);
+$('projectName').onchange = () => { checkpoint(); state.name = $('projectName').value || '未命名关卡'; };
+
+function onKeyDown(e) {
+  if (['INPUT', 'SELECT', 'TEXTAREA'].includes(e.target.tagName) || e.target.isContentEditable || e.isComposing) return;
+  const key = e.key.toLowerCase();
+  if (e.ctrlKey || e.metaKey) {
+    if (drag) return;
+    if (key === 'c') { const s = shape(); if (s) { objectClipboard = { shape: clone(s), layer: clone(layer(s)) }; pasteCount = 0; toast('体块已复制，按 Ctrl+V 粘贴到当前楼层'); e.preventDefault(); } return; }
+    if (key === 'v') { if (pasteClipboard()) e.preventDefault(); return; }
+    if (key === 'z') { e.preventDefault(); undo(e.shiftKey); return; }
+    return;
+  }
+  if (e.code === 'Space') { space = true; e.preventDefault(); }
+  if (e.key === 'Delete' || e.key === 'Backspace') { if (drag) return; e.preventDefault(); remove(); }
+  if (e.key === 'Escape') { if (wallDraft) { finishWall(true); setTool('select'); return; } selected = null; clearOpening(); setTool('select'); properties(); render(); return; }
+  if (e.key === 'Enter') { if (wallDraft) { finishWall(); return; } }
+  if (key === 'g') { setSnapMode(state.snapMode === 'free' ? 'grid' : 'free'); toast(state.snapMode === 'free' ? '自由拖动：不按格子' : '网格吸附'); return; }
+  const t = { v: 'select', r: 'rect', c: 'circle', a: 'arrow', s: 'stairs', w: 'wall', d: 'door', n: 'window', e: 'vertex', h: 'pan' }[key];
+  if (t && !e.altKey && !drag) setTool(t);
+}
+window.addEventListener('keydown', onKeyDown);
+window.addEventListener('keyup', e => { if (e.code === 'Space') space = false; });
+window.addEventListener('blur', () => { space = false; drag = null; });
+
+/* ---------- 导入导出 ---------- */
+$('export').onclick = () => {
+  const blob = new Blob([JSON.stringify({ format: 'level-studio', version: 3, ...state }, null, 2)], { type: 'application/json' });
+  const url = URL.createObjectURL(blob), a = document.createElement('a');
+  a.href = url; a.download = (state.name || '关卡') + '.json'; a.click();
+  setTimeout(() => URL.revokeObjectURL(url), 1000);
+  toast('关卡已导出，包含图形、墙体、门与楼层信息');
+};
+$('import').onclick = () => $('file').click();
+$('file').onchange = async () => {
+  const file = $('file').files[0]; if (!file) return;
+  try {
+    if (file.size > 8e6) throw Error('too large');
+    const next = normalizeLevel(JSON.parse(await file.text()));
+    checkpoint();
+    state = next; selected = null; clearOpening(); activeLayer = null; wallDraft = null;
+    floor = state.floors[0];
+    $('projectName').value = state.name;
+    syncSettings(); refresh(); $('fit').click();
+    toast('关卡已导入');
+  } catch {
+    toast('无法导入：请选择有效的关卡 JSON 文件');
+  } finally { $('file').value = ''; }
+};
+function normalizeLevel(data) {
+  if (!data || data.format !== 'level-studio' || ![1, 2, 3].includes(data.version)) throw Error('版本不支持');
+  if (!Array.isArray(data.layers) || !Array.isArray(data.shapes)) throw Error('缺少图层');
+  let floors = Array.isArray(data.floors) && data.floors.length ? [...new Set(data.floors.filter(f => Number.isInteger(f) && f >= 1))] : [...new Set(data.layers.map(l => l.floor).filter(f => Number.isInteger(f)))];
+  if (!floors.length) floors = [1];
+  floors.sort((a, b) => a - b);
+  if (floors.length > MAX_FLOORS) throw Error('楼层过多');
+  const layers = [], shapes = [];
+  for (const l of data.layers) {
+    if (!l || typeof l.id !== 'string' || !floors.includes(l.floor)) continue;
+    layers.push({ id: l.id, name: String(l.name || '体块'), floor: l.floor, visible: l.visible !== false, locked: !!l.locked });
+  }
+  const ids = new Set();
+  for (const s of data.shapes) {
+    if (!s || !['rect', 'circle', 'arrow', 'stairs', 'wall'].includes(s.type)) continue;
+    if (!Array.isArray(s.points) || s.points.length < 2 || s.points.some(p => !p || !Number.isFinite(p.x) || !Number.isFinite(p.y))) continue;
+    if (!layers.some(l => l.id === s.layer)) continue;
+    const copy = {
+      id: ids.has(s.id) ? uid('s') : String(s.id), type: s.type, layer: s.layer,
+      name: String(s.name || '体块'), color: /^#[0-9a-f]{6}$/i.test(s.color) ? s.color : PALETTE[0],
+      points: s.points.map(p => ({ x: p.x, y: p.y })), rotation: Number.isFinite(s.rotation) ? s.rotation : 0
+    };
+    if (s.type === 'stairs') Object.assign(copy, { stairSteps: clamp(Math.round(+s.stairSteps) || 12, 2, 64), stairFloors: clamp(Math.round(+s.stairFloors) || 1, 1, 100), stairReverse: !!s.stairReverse });
+    if (s.type === 'wall') {
+      copy.thickness = clamp(+s.thickness || .24, .02, 10);
+      copy.height = clamp(+s.height || 3, .1, 100);
+      copy.closed = !!s.closed;
+      copy.doors = (Array.isArray(s.doors) ? s.doors : []).slice(0, 200).map(d => ({
+        id: uid('d'), seg: Math.max(0, Math.round(+d.seg) || 0), t: clamp(+d.t || 0, 0, 1),
+        width: clamp(+d.width || 1, .1, 50), height: clamp(+d.height || 2.1, .1, 50), sill: 0,
+        flip: d.flip === -1 ? -1 : 1, open: !!d.open,
+        color: /^#[0-9a-f]{6}$/i.test(d.color) ? d.color : DOOR_COLOR, name: String(d.name || '门')
+      }));
+      copy.windows = (Array.isArray(s.windows) ? s.windows : []).slice(0, 200).map(w => ({
+        id: uid('w'), seg: Math.max(0, Math.round(+w.seg) || 0), t: clamp(+w.t || 0, 0, 1),
+        width: clamp(+w.width || 1.4, .1, 50), height: clamp(+w.height || 1.4, .1, 50),
+        sill: clamp(+w.sill || 0, 0, 50),
+        color: /^#[0-9a-f]{6}$/i.test(w.color) ? w.color : WINDOW_COLOR, name: String(w.name || '窗')
+      }));
+    }
+    ids.add(copy.id); shapes.push(copy);
+  }
+  const floorHeights = {};
+  for (const f of floors) floorHeights[f] = Number.isFinite(data.floorHeights?.[f]) ? data.floorHeights[f] : (f - 1) * (data.gap || 4);
+  return {
+    name: String(data.name || '导入的关卡'), floors, floorHeights,
+    hiddenFloors: (Array.isArray(data.hiddenFloors) ? data.hiddenFloors : []).filter(f => floors.includes(f)),
+    layers, shapes,
+    gap: clamp(+data.gap || 4, .5, 30), wallHeight: clamp(+data.wallHeight || 3, .1, 100),
+    snapMode: data.snapMode === 'free' ? 'free' : 'grid', snapStep: [1, .5, .25].includes(+data.snapStep) ? +data.snapStep : 1,
+    opacity: {
+      wall: Number.isFinite(data.opacity?.wall) ? clamp(+data.opacity.wall, 0, 1) : .9,
+      door: Number.isFinite(data.opacity?.door) ? clamp(+data.opacity.door, 0, 1) : .85,
+      window: Number.isFinite(data.opacity?.window) ? clamp(+data.opacity.window, 0, 1) : .35,
+      slab: Number.isFinite(data.opacity?.slab) ? clamp(+data.opacity.slab, 0, 1) : .5
+    }
+  };
+}
+function syncSettings() {
+  $('projectName').value = state.name;
+  $('gapInput').value = state.gap;
+  $('wallHeightInput').value = state.wallHeight;
+  $('snapStep').value = String(state.snapStep || 1);
+  const op = state.opacity || (state.opacity = defaultState().opacity);
+  for (const [key, id] of [['wall', 'wallOpacity'], ['door', 'doorOpacity'], ['window', 'windowOpacity'], ['slab', 'slabOpacity']]) {
+    $(id).value = Math.round(op[key] * 100);
+    $(id + 'Value').textContent = Math.round(op[key] * 100) + '%';
+  }
+  setSnapMode(state.snapMode);
+}
+
+/* ---------- 启动 ---------- */
+new ResizeObserver(() => render()).observe(svg);
+syncSettings();
+panels();
+properties();
+render();
+
+</script></body></html>
