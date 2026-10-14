@@ -42,7 +42,25 @@ function el(tag, attrs = {}, parent = svg) {
   return n;
 }
 const clone = v => JSON.parse(JSON.stringify(v));
-function checkpoint() { history.push(clone(state)); if (history.length > 80) history.shift(); future = []; undoButtons(); }
+function checkpoint() { history.push(clone(state)); if (history.length > 80) history.shift(); future = []; undoButtons(); saveDraft(); }
+/* 本地草稿：iPad 上导出不便，至少保证关掉 Safari 不丢工作 */
+const DRAFT_KEY = 'level-studio-draft-v3';
+let draftTimer = null;
+function saveDraft() {
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(() => { try { localStorage.setItem(DRAFT_KEY, levelJSON()); } catch { } }, 600);
+}
+function restoreDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY); if (!raw) return false;
+    const d = JSON.parse(raw);
+    if (!d || !Array.isArray(d.shapes) || !d.shapes.length) return false;
+    state = normalizeLevel(d);
+    selected = null; clearOpening(); activeLayer = null; wallDraft = null;
+    floor = state.floors.includes(floor) ? floor : state.floors[0];
+    return true;
+  } catch { return false; }
+}
 function undoButtons() { $('undo').disabled = !history.length; $('redo').disabled = !future.length; }
 function toast(msg) {
   $('toast').textContent = msg; $('toast').classList.add('show');
@@ -1250,12 +1268,70 @@ window.addEventListener('keyup', e => { if (e.code === 'Space') space = false; }
 window.addEventListener('blur', () => { space = false; drag = null; });
 
 /* ---------- 导入导出 ---------- */
-$('export').onclick = () => {
-  const blob = new Blob([JSON.stringify({ format: 'level-studio', version: 3, ...state }, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob), a = document.createElement('a');
-  a.href = url; a.download = (state.name || '关卡') + '.json'; a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+const levelJSON = () => JSON.stringify({ format: 'level-studio', version: 3, ...state }, null, 2);
+const exportFileName = () => (state.name || '关卡').replace(/[\\/:*?"<>|]/g, '_') + '.json';
+// iPad/iPhone 的 Safari 不认 <a download>：blob 链接会被当成页面打开，直接把 JSON 显示成代码
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+function shareFile(text, name) {
+  if (typeof navigator.share !== 'function' || typeof navigator.canShare !== 'function') return Promise.resolve('unsupported');
+  const file = new File([text], name, { type: 'application/json' });
+  if (!navigator.canShare({ files: [file] })) return Promise.resolve('unsupported');
+  return navigator.share({ files: [file], title: name })
+    .then(() => 'ok')
+    .catch(e => (e && e.name === 'AbortError') ? 'cancelled' : 'failed');
+}
+function downloadFile(text, name) {
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.rel = 'noopener'; a.style.display = 'none';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+let exportText = '';
+function openExportModal(text, name) {
+  exportText = text;
+  $('exportText').value = text;
+  $('exportWhy').textContent = isIOS()
+    ? 'iPad 的浏览器不能直接下载文件，所以这里直接给出关卡数据。点「复制全部」粘贴到备忘录或微信保存，或点「用系统分享保存」存进「文件」App。'
+    : '这个浏览器不支持直接下载。点「复制全部」，把文本保存成 .json 文件即可。';
+  $('exportModal').hidden = false;
+  const ta = $('exportText');
+  ta.focus({ preventScroll: true });
+  try { ta.setSelectionRange(0, ta.value.length); } catch { }
+}
+$('export').onclick = async () => {
+  const text = levelJSON(), name = exportFileName();
+  if (isIOS()) {
+    // ① iPad / iPhone：走系统分享面板，可以「存储到文件」、隔空投送或发到微信
+    const r = await shareFile(text, name);
+    if (r === 'ok') { toast('已调起分享：选择「存储到文件」保存为 .json'); return; }
+    if (r === 'cancelled') return;                 // 用户自己取消，不打扰
+    openExportModal(text, name);                   // ② 分享不可用 → 文本兜底
+    return;
+  }
+  downloadFile(text, name);
   toast('关卡已导出，包含图形、墙体、门与楼层信息');
+};
+$('exportClose').onclick = () => { $('exportModal').hidden = true; };
+$('exportModal').addEventListener('click', e => { if (e.target === $('exportModal')) $('exportModal').hidden = true; });
+$('copyJson').onclick = async () => {
+  const ta = $('exportText');
+  ta.focus({ preventScroll: true });
+  try { ta.setSelectionRange(0, ta.value.length); } catch { }
+  try {
+    await navigator.clipboard.writeText(ta.value);
+    toast('已复制到剪贴板');
+  } catch {
+    const ok = document.execCommand && document.execCommand('copy');
+    toast(ok ? '已复制到剪贴板' : '复制失败：请手动长按文本框全选复制');
+  }
+};
+$('retryShare').onclick = async () => {
+  const r = await shareFile(exportText, exportFileName());
+  if (r === 'ok') { $('exportModal').hidden = true; toast('已通过系统分享保存'); }
+  else toast('这台设备不支持分享文件，请用「复制全部」');
 };
 $('import').onclick = () => $('file').click();
 $('file').onchange = async () => {
@@ -1346,7 +1422,9 @@ function syncSettings() {
 
 /* ---------- 启动 ---------- */
 new ResizeObserver(() => render()).observe(svg);
+const restored = restoreDraft();
 syncSettings();
 panels();
 properties();
 render();
+if (restored) setTimeout(() => toast('已恢复上次编辑的关卡（本地草稿）'), 400);
