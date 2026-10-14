@@ -154,6 +154,20 @@ button.wide.danger{background:#fdf1ef;border-color:#f2d9d3;color:#b0493a}
 #toast{position:fixed;left:50%;bottom:64px;transform:translate(-50%,14px);background:#263e36;color:#fff;padding:11px 18px;border-radius:9px;font-size:13px;opacity:0;pointer-events:none;transition:.22s;z-index:20;box-shadow:0 8px 22px #23413a30}
 #toast.show{opacity:1;transform:translate(-50%,0)}
 
+/* 导出兜底弹窗：iPad 等不支持下载的设备上直接给出关卡文本 */
+.modal{position:fixed;inset:0;background:#1d2f2a66;display:flex;align-items:center;justify-content:center;z-index:30;padding:20px}
+.modal[hidden]{display:none}
+.modal-card{background:#fff;border-radius:14px;padding:18px 20px 20px;width:min(560px,100%);max-height:86vh;display:flex;flex-direction:column;gap:10px;box-shadow:0 18px 50px #1d2f2a40}
+.modal-card .section-title{margin:0}
+.modal-card h2{font-size:15px;margin:0}
+.modal-card #exportClose{font-size:20px;line-height:1;padding:2px 9px;color:var(--muted)}
+.modal-card #exportClose:hover{background:#f1f5f3;color:#233d38}
+#exportText{flex:1;min-height:220px;width:100%;resize:vertical;font-family:ui-monospace,Menlo,Consolas,monospace;font-size:12px;line-height:1.6;color:#3c5a4e;background:#f7faf8;border:1px solid var(--line);border-radius:9px;padding:12px;-webkit-user-select:text;user-select:text}
+.modal-actions{display:flex;gap:10px}
+.modal-actions .wide{flex:1;background:var(--green);color:#fff;padding:11px 12px;font-size:13px}
+.modal-actions .wide:last-child{background:#fff;color:var(--green-dark);border:1px solid #cfe3d9}
+@media (pointer:coarse){.modal-actions .wide{padding:14px 12px}#exportText{min-height:180px}}
+
 /* 触屏设备（iPad 等）：放大点击热区，关掉长按菜单与文本选中 */
 #canvas{-webkit-user-select:none;user-select:none;-webkit-touch-callout:none}
 @media (pointer:coarse){
@@ -202,7 +216,13 @@ button.wide.danger{background:#fdf1ef;border-color:#f2d9d3;color:#b0493a}
 <div class="door-section"><div class="section-title small"><h3>窗洞</h3><button id="addWindow" title="在墙体上添加窗">＋ 窗</button></div><div id="windowList"></div><p class="muted intro">窗洞下方留窗台、上方留过梁；拖动可沿墙滑动。</p></div><button class="wide" id="editVertices">◇ 编辑顶点</button><p class="muted intro" id="vertexHelp">拖动实心顶点修改轮廓；点击边上的 ＋ 增加顶点。</p></div>
 <div id="doorProperties" hidden><div class="section-title small"><h3>门属性</h3><span id="doorTag" class="tag">门</span></div><label class="field">名称<input id="doorName"></label><label class="field">位置（沿墙 0–1）<input id="doorT" type="number" min="0" max="1" step="0.01"></label><div class="two-fields"><label class="field">门宽<input id="doorWidth" type="number" min="0.1" max="50" step="0.1"></label><label class="field">门高<input id="doorHeight" type="number" min="0.1" max="50" step="0.1"></label></div><label class="field">开向<select id="doorFlip"><option value="1">正向</option><option value="-1">反向</option></select></label><label class="field">状态<select id="doorOpen"><option value="closed">关闭</option><option value="open">开启 90°</option></select></label><label class="field">颜色<div class="color-row"><input type="color" id="doorColor"><span id="doorColorValue"></span></div></label><button class="wide danger" id="deleteDoor">删除这扇门</button></div>
 <div id="windowProperties" hidden><div class="section-title small"><h3>窗属性</h3><span id="windowTag" class="tag">窗</span></div><label class="field">名称<input id="windowName"></label><label class="field">位置（沿墙 0–1）<input id="windowT" type="number" min="0" max="1" step="0.01"></label><div class="two-fields"><label class="field">窗宽<input id="windowWidth" type="number" min="0.1" max="50" step="0.1"></label><label class="field">窗高<input id="windowHeight" type="number" min="0.1" max="50" step="0.1"></label></div><label class="field">窗台高（离本层地面）<input id="windowSill" type="number" min="0" max="50" step="0.1"></label><label class="field">玻璃颜色<div class="color-row"><input type="color" id="windowColor"><span id="windowColorValue"></span></div></label><p class="muted intro" id="windowNote"></p><button class="wide danger" id="deleteWindow">删除这扇窗</button></div>
-<button class="wide danger" id="deleteShape">删除图形</button></div></div><div class="aside-bottom">LEVEL STUDIO <span>把想法变成空间</span></div></aside></main><div id="toast" role="status"></div><script>
+<button class="wide danger" id="deleteShape">删除图形</button></div></div><div class="aside-bottom">LEVEL STUDIO <span>把想法变成空间</span></div></aside></main><div id="toast" role="status"></div>
+<div id="exportModal" class="modal" hidden><div class="modal-card"><div class="section-title"><h2>导出关卡</h2><button id="exportClose" title="关闭">×</button></div>
+<p class="muted intro" id="exportWhy">这台设备不支持直接下载文件。可以点「复制全部」，再粘贴到备忘录、微信或邮件里保存。</p>
+<textarea id="exportText" readonly spellcheck="false"></textarea>
+<div class="modal-actions"><button class="wide" id="copyJson">复制全部</button><button class="wide" id="retryShare">用系统分享保存</button></div>
+<p class="muted intro">下次导入时，把这段文本粘贴成 .json 文件即可；也可以直接用「导入」选择文件。</p></div></div>
+<script>
 // 几何与模型工具：旋转、楼层高度、楼梯网格、墙体分段、门洞切分。
 function clamp(v, a, b) { return Math.max(a, Math.min(b, v)); }
 function dist(a, b) { return Math.hypot(a.x - b.x, a.y - b.y); }
@@ -466,7 +486,25 @@ function el(tag, attrs = {}, parent = svg) {
   return n;
 }
 const clone = v => JSON.parse(JSON.stringify(v));
-function checkpoint() { history.push(clone(state)); if (history.length > 80) history.shift(); future = []; undoButtons(); }
+function checkpoint() { history.push(clone(state)); if (history.length > 80) history.shift(); future = []; undoButtons(); saveDraft(); }
+/* 本地草稿：iPad 上导出不便，至少保证关掉 Safari 不丢工作 */
+const DRAFT_KEY = 'level-studio-draft-v3';
+let draftTimer = null;
+function saveDraft() {
+  clearTimeout(draftTimer);
+  draftTimer = setTimeout(() => { try { localStorage.setItem(DRAFT_KEY, levelJSON()); } catch { } }, 600);
+}
+function restoreDraft() {
+  try {
+    const raw = localStorage.getItem(DRAFT_KEY); if (!raw) return false;
+    const d = JSON.parse(raw);
+    if (!d || !Array.isArray(d.shapes) || !d.shapes.length) return false;
+    state = normalizeLevel(d);
+    selected = null; clearOpening(); activeLayer = null; wallDraft = null;
+    floor = state.floors.includes(floor) ? floor : state.floors[0];
+    return true;
+  } catch { return false; }
+}
 function undoButtons() { $('undo').disabled = !history.length; $('redo').disabled = !future.length; }
 function toast(msg) {
   $('toast').textContent = msg; $('toast').classList.add('show');
@@ -1674,12 +1712,70 @@ window.addEventListener('keyup', e => { if (e.code === 'Space') space = false; }
 window.addEventListener('blur', () => { space = false; drag = null; });
 
 /* ---------- 导入导出 ---------- */
-$('export').onclick = () => {
-  const blob = new Blob([JSON.stringify({ format: 'level-studio', version: 3, ...state }, null, 2)], { type: 'application/json' });
-  const url = URL.createObjectURL(blob), a = document.createElement('a');
-  a.href = url; a.download = (state.name || '关卡') + '.json'; a.click();
-  setTimeout(() => URL.revokeObjectURL(url), 1000);
+const levelJSON = () => JSON.stringify({ format: 'level-studio', version: 3, ...state }, null, 2);
+const exportFileName = () => (state.name || '关卡').replace(/[\\/:*?"<>|]/g, '_') + '.json';
+// iPad/iPhone 的 Safari 不认 <a download>：blob 链接会被当成页面打开，直接把 JSON 显示成代码
+function isIOS() {
+  return /iPad|iPhone|iPod/.test(navigator.userAgent) || (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+}
+function shareFile(text, name) {
+  if (typeof navigator.share !== 'function' || typeof navigator.canShare !== 'function') return Promise.resolve('unsupported');
+  const file = new File([text], name, { type: 'application/json' });
+  if (!navigator.canShare({ files: [file] })) return Promise.resolve('unsupported');
+  return navigator.share({ files: [file], title: name })
+    .then(() => 'ok')
+    .catch(e => (e && e.name === 'AbortError') ? 'cancelled' : 'failed');
+}
+function downloadFile(text, name) {
+  const url = URL.createObjectURL(new Blob([text], { type: 'application/json' }));
+  const a = document.createElement('a');
+  a.href = url; a.download = name; a.rel = 'noopener'; a.style.display = 'none';
+  document.body.appendChild(a); a.click(); a.remove();
+  setTimeout(() => URL.revokeObjectURL(url), 2000);
+}
+let exportText = '';
+function openExportModal(text, name) {
+  exportText = text;
+  $('exportText').value = text;
+  $('exportWhy').textContent = isIOS()
+    ? 'iPad 的浏览器不能直接下载文件，所以这里直接给出关卡数据。点「复制全部」粘贴到备忘录或微信保存，或点「用系统分享保存」存进「文件」App。'
+    : '这个浏览器不支持直接下载。点「复制全部」，把文本保存成 .json 文件即可。';
+  $('exportModal').hidden = false;
+  const ta = $('exportText');
+  ta.focus({ preventScroll: true });
+  try { ta.setSelectionRange(0, ta.value.length); } catch { }
+}
+$('export').onclick = async () => {
+  const text = levelJSON(), name = exportFileName();
+  if (isIOS()) {
+    // ① iPad / iPhone：走系统分享面板，可以「存储到文件」、隔空投送或发到微信
+    const r = await shareFile(text, name);
+    if (r === 'ok') { toast('已调起分享：选择「存储到文件」保存为 .json'); return; }
+    if (r === 'cancelled') return;                 // 用户自己取消，不打扰
+    openExportModal(text, name);                   // ② 分享不可用 → 文本兜底
+    return;
+  }
+  downloadFile(text, name);
   toast('关卡已导出，包含图形、墙体、门与楼层信息');
+};
+$('exportClose').onclick = () => { $('exportModal').hidden = true; };
+$('exportModal').addEventListener('click', e => { if (e.target === $('exportModal')) $('exportModal').hidden = true; });
+$('copyJson').onclick = async () => {
+  const ta = $('exportText');
+  ta.focus({ preventScroll: true });
+  try { ta.setSelectionRange(0, ta.value.length); } catch { }
+  try {
+    await navigator.clipboard.writeText(ta.value);
+    toast('已复制到剪贴板');
+  } catch {
+    const ok = document.execCommand && document.execCommand('copy');
+    toast(ok ? '已复制到剪贴板' : '复制失败：请手动长按文本框全选复制');
+  }
+};
+$('retryShare').onclick = async () => {
+  const r = await shareFile(exportText, exportFileName());
+  if (r === 'ok') { $('exportModal').hidden = true; toast('已通过系统分享保存'); }
+  else toast('这台设备不支持分享文件，请用「复制全部」');
 };
 $('import').onclick = () => $('file').click();
 $('file').onchange = async () => {
@@ -1770,9 +1866,11 @@ function syncSettings() {
 
 /* ---------- 启动 ---------- */
 new ResizeObserver(() => render()).observe(svg);
+const restored = restoreDraft();
 syncSettings();
 panels();
 properties();
 render();
+if (restored) setTimeout(() => toast('已恢复上次编辑的关卡（本地草稿）'), 400);
 
 </script></body></html>
